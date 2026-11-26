@@ -1,8 +1,7 @@
 /**
  * Online player-style fingerprint derived only from moves the player has
- * already made in the current game. The policy never sees future moves.
- *
- * These are behavioral measurements, not hand-assigned personality labels.
+ * already made. Accumulator state is serializable so a player's history can
+ * continue across separate PGN imports.
  */
 export const STYLE_FEATURE_NAMES = [
   "captureRate",
@@ -27,6 +26,28 @@ export interface StyleObservation {
   san: string;
 }
 
+/** Raw counters, rather than averages, preserve exact weighting across games. */
+export interface PlayerStyleState {
+  moves: number;
+  captures: number;
+  checks: number;
+  pawnAdvances: number;
+  centralityTotal: number;
+  centralityMoves: number;
+  earlyQueenMoves: number;
+  castled: boolean;
+  kingMoves: number;
+  activePieceMoves: number;
+}
+
+function safeCount(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function safeTotal(value: number | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
 function squareCentrality(square: string): number {
   if (!/^[a-h][1-8]$/.test(square)) return 0;
   const file = square.charCodeAt(0) - 97;
@@ -41,20 +62,33 @@ function isForwardPawnMove(observation: StyleObservation, color: "w" | "b"): boo
 }
 
 /**
- * Tracks a single player's observable move tendencies during one game.
- * Call snapshot() before observe() for each move to avoid target leakage.
+ * Tracks a player's observable move tendencies across one or more games.
+ * Call snapshot() before observe() for every move to avoid target leakage.
  */
 export class PlayerStyleAccumulator {
-  private moves = 0;
-  private captures = 0;
-  private checks = 0;
-  private pawnAdvances = 0;
-  private centralityTotal = 0;
-  private centralityMoves = 0;
-  private earlyQueenMoves = 0;
-  private castled = false;
-  private kingMoves = 0;
-  private activePieceMoves = 0;
+  private moves: number;
+  private captures: number;
+  private checks: number;
+  private pawnAdvances: number;
+  private centralityTotal: number;
+  private centralityMoves: number;
+  private earlyQueenMoves: number;
+  private castled: boolean;
+  private kingMoves: number;
+  private activePieceMoves: number;
+
+  constructor(state?: Partial<PlayerStyleState>) {
+    this.moves = safeCount(state?.moves);
+    this.captures = safeCount(state?.captures);
+    this.checks = safeCount(state?.checks);
+    this.pawnAdvances = safeCount(state?.pawnAdvances);
+    this.centralityTotal = safeTotal(state?.centralityTotal);
+    this.centralityMoves = safeCount(state?.centralityMoves);
+    this.earlyQueenMoves = safeCount(state?.earlyQueenMoves);
+    this.castled = state?.castled === true;
+    this.kingMoves = safeCount(state?.kingMoves);
+    this.activePieceMoves = safeCount(state?.activePieceMoves);
+  }
 
   snapshot(): number[] {
     const denominator = Math.max(this.moves, 1);
@@ -69,6 +103,21 @@ export class PlayerStyleAccumulator {
       this.activePieceMoves / denominator,
       Math.min(this.moves / 12, 1),
     ];
+  }
+
+  serialize(): PlayerStyleState {
+    return {
+      moves: this.moves,
+      captures: this.captures,
+      checks: this.checks,
+      pawnAdvances: this.pawnAdvances,
+      centralityTotal: this.centralityTotal,
+      centralityMoves: this.centralityMoves,
+      earlyQueenMoves: this.earlyQueenMoves,
+      castled: this.castled,
+      kingMoves: this.kingMoves,
+      activePieceMoves: this.activePieceMoves,
+    };
   }
 
   observe(observation: StyleObservation, color: "w" | "b"): void {

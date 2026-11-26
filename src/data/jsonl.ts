@@ -55,6 +55,9 @@ function isSample(value: unknown): value is HumanMoveSample {
     && Number.isInteger(sample.ply)
     && (sample.playerElo === undefined || (typeof sample.playerElo === "number" && Number.isFinite(sample.playerElo) && sample.playerElo > 0))
     && (sample.opponentElo === undefined || (typeof sample.opponentElo === "number" && Number.isFinite(sample.opponentElo) && sample.opponentElo > 0))
+    && (sample.playerId === undefined || typeof sample.playerId === "string")
+    && (sample.opponentId === undefined || typeof sample.opponentId === "string")
+    && (sample.gameDate === undefined || typeof sample.gameDate === "string")
     && (sample.styleFeatures === undefined || (
       Array.isArray(sample.styleFeatures)
       && sample.styleFeatures.length === STYLE_FEATURES
