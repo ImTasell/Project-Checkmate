@@ -11,6 +11,7 @@ A TypeScript chess project focused on learning move preferences from real human 
 - Unannotated moves are excluded from decision-quality training rather than being treated as good decisions.
 - Decision-quality inference evaluates a position plus the move actually played and returns probabilities for seven annotation categories.
 - Legal-move analysis scores every candidate with that separate classifier and exposes positive, interesting, and critical annotation probabilities as advisory signals.
+- Human-like move selection samples from the learned policy with a configurable temperature and an optional, separately weighted annotation signal.
 - Model training, player-disjoint evaluation, compact JSONL datasets, and portable TensorFlow.js artifacts.
 
 ## Setup
@@ -81,6 +82,22 @@ npm run analyze:quality -- "<FEN>" ./models/decision-quality 1600
 ```
 
 The analyzer scores every legal candidate and reports the probability of a positive annotation (good/brilliant), an interesting annotation, and a critical annotation (mistake/dubious/blunder/worst). It does not combine those probabilities with policy scores or change move selection. Treat the output as advisory human-annotation likelihood, not objective chess strength.
+
+## Select a human-like move
+
+The policy model can now be loaded and used to sample a legal move:
+
+```sh
+npm run choose:move -- \"<FEN>\"
+```
+
+Optional positional arguments are policy directory, quality-model directory (or `-`), Elo (or `-`), temperature, quality weight, and seed:
+
+```sh
+npm run choose:move -- \"<FEN>\" ./models/human-policy ./models/decision-quality 1600 1.2 0.15 42
+```
+
+Temperature controls sampling diversity. Quality weight defaults to zero; enable it only after evaluating the annotation model on a real, player-disjoint annotated corpus. The sampler reports the original normalized policy probability and final selection probability separately. A seed makes the sampled choice reproducible. Promotion candidates currently share the policy's from/to score because promotion is not yet a separate policy output class.
 
 ## Evaluate decision-quality generalization
 
