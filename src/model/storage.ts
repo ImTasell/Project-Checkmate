@@ -1,9 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LayersModel } from "@tensorflow/tfjs";
+import { MODEL_INPUT_FEATURES } from "./conditioning.js";
+import type { ArchetypeEncoderModel } from "../data/archetypes.js";
 
-/** Save a TFJS LayersModel without requiring the native tfjs-node package. */
-export async function savePolicyModel(model: LayersModel, outputDirectory: string): Promise<void> {
+/** Save a TFJS LayersModel and the exact feature transform needed at inference. */
+export async function savePolicyModel(
+  model: LayersModel,
+  outputDirectory: string,
+  archetypeModel?: ArchetypeEncoderModel,
+): Promise<void> {
   const directory = resolve(outputDirectory);
   await mkdir(directory, { recursive: true });
 
@@ -37,4 +43,11 @@ export async function savePolicyModel(model: LayersModel, outputDirectory: strin
       };
     },
   });
+
+  await writeFile(resolve(directory, "conditioning.json"), `${JSON.stringify({
+    version: 1,
+    modelInputFeatures: MODEL_INPUT_FEATURES,
+    archetypeConditioning: archetypeModel ? "enabled" : "disabled",
+    archetypeModel: archetypeModel ?? null,
+  }, null, 2)}\n`, "utf8");
 }

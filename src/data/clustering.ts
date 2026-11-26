@@ -10,23 +10,24 @@ export interface StyleArchetype {
   label: string;
   size: number;
   centroid: BehaviorCentroid;
+  /** Centroid coordinates in the clustering model's standardized feature space. */
+  standardizedCentroid: number[];
   memberIds: string[];
 }
 
 export interface PlayerClusteringOptions {
-  /** Require enough observed moves before a player can influence clustering. */
   minMoves?: number;
-  /** Do not publish archetypes from a tiny player population. */
   minPlayers?: number;
-  /** Maximum number of clusters considered when selecting k automatically. */
   maxClusters?: number;
-  /** Force a cluster count instead of selecting it with a silhouette score. */
   clusters?: number;
   seed?: number;
 }
 
 export interface PlayerClusteringResult {
   algorithm: "standardized-k-means";
+  featureNames: string[];
+  featureMeans: number[];
+  featureDeviations: number[];
   minMoves: number;
   eligiblePlayers: number;
   excludedPlayers: number;
@@ -190,7 +191,6 @@ function runKMeans(rows: PlayerVector[], k: number, seed: number): KMeansResult 
 function approximateSilhouette(rows: PlayerVector[], assignments: number[], k: number): number {
   if (rows.length < 3 || k < 2) return -1;
 
-  // Deterministic evenly spaced sample keeps model selection bounded on large databases.
   const sampleSize = Math.min(rows.length, 300);
   const indices = Array.from({ length: sampleSize }, (_, index) =>
     Math.floor((index * rows.length) / sampleSize),
@@ -279,7 +279,7 @@ function selectClusterCount(
   return { ...best };
 }
 
-function describeCluster(center: number[], global: Standardization): string {
+function describeCluster(center: number[]): string {
   const descriptors: Array<{ deviation: number; text: string }> = [
     { deviation: center[0] ?? 0, text: (center[0] ?? 0) >= 0 ? "capture-oriented" : "capture-selective" },
     { deviation: center[1] ?? 0, text: (center[1] ?? 0) >= 0 ? "check-seeking" : "check-conservative" },
@@ -295,7 +295,6 @@ function describeCluster(center: number[], global: Standardization): string {
     .filter((item) => item.deviation >= 0.55)
     .sort((a, b) => b.deviation - a.deviation)
     .slice(0, 2);
-  void global;
   return selected.length ? selected.map((item) => item.text).join(" · ") : "balanced / mixed tendencies";
 }
 
@@ -314,11 +313,6 @@ function vectorizeProfile(profile: PlayerProfileRecord): PlayerVector {
   return { id: profile.id, displayName: profile.displayName, raw, normalized: [] };
 }
 
-/**
- * Groups sufficiently observed human players by standardized behavior.
- * Confidence is used only to filter low-history players; it is not a style
- * dimension, so the number of imported moves cannot itself define an archetype.
- */
 export function clusterPlayerProfiles(
   database: PlayerProfileDatabase,
   options: PlayerClusteringOptions = {},
@@ -335,6 +329,9 @@ export function clusterPlayerProfiles(
     .map(vectorizeProfile);
   const base: PlayerClusteringResult = {
     algorithm: "standardized-k-means",
+    featureNames: [...BEHAVIOR_FEATURE_NAMES],
+    featureMeans: Array(BEHAVIOR_FEATURE_NAMES.length).fill(0) as number[],
+    featureDeviations: Array(BEHAVIOR_FEATURE_NAMES.length).fill(1) as number[],
     minMoves,
     eligiblePlayers: rows.length,
     excludedPlayers: allProfiles.length - rows.length,
@@ -350,6 +347,9 @@ export function clusterPlayerProfiles(
   }
 
   const global = standardize(rows);
+  base.featureMeans = [...global.means];
+  base.featureDeviations = [...global.deviations];
+
   let selected: { k: number; score: number | null; fitted: KMeansResult };
   try {
     selected = selectClusterCount(rows, options);
@@ -360,9 +360,7 @@ export function clusterPlayerProfiles(
 
   const groups = Array.from({ length: selected.k }, () => [] as number[]);
   selected.fitted.assignments.forEach((cluster, index) => groups[cluster]?.push(index));
-
   const nonEmptyGroups = groups
-    .map((members) => members)
     .filter((members) => members.length > 0)
     .sort((a, b) => {
       const aId = rows[a[0] ?? 0]?.id ?? "";
@@ -371,20 +369,19 @@ export function clusterPlayerProfiles(
     });
 
   const archetypes = nonEmptyGroups.map((members, index): StyleArchetype => {
-    const center = selected.fitted.centers[
-      selected.fitted.assignments[members[0] ?? 0] ?? 0
-    ] ?? [];
+    const originalCluster = selected.fitted.assignments[members[0] ?? 0] ?? 0;
+    const center = selected.fitted.centers[originalCluster] ?? [];
     const id = `style-${index + 1}`;
-    const label = describeCluster(center, global);
     for (const memberIndex of members) {
       const playerId = rows[memberIndex]?.id;
       if (playerId) base.assignments[playerId] = id;
     }
     return {
       id,
-      label,
+      label: describeCluster(center),
       size: members.length,
       centroid: makeRawCentroid(rows, members),
+      standardizedCentroid: [...center],
       memberIds: members.map((memberIndex) => rows[memberIndex]?.id ?? ""),
     };
   });

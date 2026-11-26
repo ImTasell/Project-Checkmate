@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { POSITION_FEATURES } from "../src/chess/position.js";
 import { STYLE_FEATURES } from "../src/data/style.js";
 import {
+  CONTINUOUS_MODEL_INPUT_FEATURES,
   encodeModelInput,
   encodeSkillFeatures,
   encodeStyleFeatures,
@@ -9,6 +10,7 @@ import {
   MODEL_INPUT_FEATURES,
   SKILL_FEATURES,
 } from "../src/model/conditioning.js";
+import { ARCHETYPE_FEATURES } from "../src/data/archetypes.js";
 
 const whiteToMove = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const blackToMove = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 1";
@@ -31,16 +33,18 @@ describe("human skill conditioning", () => {
     expect(getMoverElo({ fen: blackToMove, whiteElo: 1200, blackElo: 1800 })).toBe(1800);
   });
 
-  it("appends skill and style features to the existing position encoding", () => {
+  it("appends skill, continuous style, and archetype feature slots to position encoding", () => {
     const style = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
     const features = encodeModelInput(whiteToMove, 1600, style);
     expect(features).toHaveLength(MODEL_INPUT_FEATURES);
-    expect(MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + SKILL_FEATURES + STYLE_FEATURES);
+    expect(CONTINUOUS_MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + SKILL_FEATURES + STYLE_FEATURES);
+    expect(MODEL_INPUT_FEATURES).toBe(CONTINUOUS_MODEL_INPUT_FEATURES + ARCHETYPE_FEATURES);
     expect(features[POSITION_FEATURES]).toBe(0.5);
     expect(features[POSITION_FEATURES + 1]).toBe(1);
-    Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES)).forEach((value, index) => {
+    Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES, CONTINUOUS_MODEL_INPUT_FEATURES)).forEach((value, index) => {
       expect(value).toBeCloseTo(style[index] ?? 0, 5);
     });
+    expect(Array.from(features.slice(CONTINUOUS_MODEL_INPUT_FEATURES))).toEqual(new Array(ARCHETYPE_FEATURES).fill(0));
   });
 
   it("provides neutral style features for legacy samples and validates profile shape", () => {

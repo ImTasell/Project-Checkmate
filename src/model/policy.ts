@@ -1,6 +1,8 @@
 import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
+import type { ArchetypeEncoderModel } from "../data/archetypes.js";
 import {
+  encodeArchetypeFeatures,
   encodeSkillFeatures,
   encodeStyleFeatures,
   encodeTrainingSample,
@@ -34,6 +36,8 @@ export interface TrainingOptions {
   epochs?: number;
   batchSize?: number;
   validationSplit?: number;
+  archetypeModel?: ArchetypeEncoderModel;
+  logProgress?: boolean;
 }
 
 export async function trainPolicy(
@@ -42,10 +46,8 @@ export async function trainPolicy(
   options: TrainingOptions = {},
 ): Promise<tf.History> {
   if (samples.length < 2) throw new Error("Need at least two human move samples to train.");
-  // Re-encode compact FEN+metadata samples on demand to keep JSONL datasets small.
-  // Inputs include mover Elo and only the style observed before that exact move.
   const xs = tf.tensor2d(
-    samples.map((sample) => Array.from(encodeTrainingSample(sample))),
+    samples.map((sample) => Array.from(encodeTrainingSample(sample, options.archetypeModel))),
     [samples.length, MODEL_INPUT_FEATURES],
   );
   const ys = tf.tensor1d(samples.map((sample) => sample.moveIndex), "int32");
@@ -58,6 +60,7 @@ export async function trainPolicy(
       shuffle: true,
       callbacks: {
         onEpochEnd: async (epoch, logs) => {
+          if (options.logProgress === false) return;
           const loss = logs?.loss?.toFixed(4) ?? "n/a";
           const accuracy = logs?.acc?.toFixed(4) ?? logs?.accuracy?.toFixed(4) ?? "n/a";
           console.log(`epoch ${epoch + 1}: loss=${loss} accuracy=${accuracy}`);
@@ -70,17 +73,13 @@ export async function trainPolicy(
   }
 }
 
-/**
- * Rank legal moves using a 773-value board encoding, optional player Elo,
- * and the player's nine-value style fingerprint. The style vector should be
- * the player's current/desired profile in STYLE_FEATURE_NAMES order.
- */
 export function rankLegalMoves(
   model: tf.LayersModel,
   fenFeatures: Float32Array,
   legalMoves: Array<{ from: string; to: string; promotion?: string }>,
   playerElo?: number,
   styleFeatures?: readonly number[],
+  archetypeModel?: ArchetypeEncoderModel,
 ): Array<{ move: string; score: number }> {
   if (!legalMoves.length) return [];
   if (fenFeatures.length !== POSITION_FEATURES) {
@@ -91,6 +90,7 @@ export function rankLegalMoves(
   inputFeatures.set(fenFeatures, 0);
   inputFeatures.set(encodeSkillFeatures(playerElo), POSITION_FEATURES);
   inputFeatures.set(encodeStyleFeatures(styleFeatures), POSITION_FEATURES + SKILL_FEATURES);
+  inputFeatures.set(encodeArchetypeFeatures(styleFeatures, archetypeModel), MODEL_INPUT_FEATURES - encodeArchetypeFeatures(styleFeatures, archetypeModel).length);
   const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();

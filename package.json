@@ -11,6 +11,7 @@
     "test:watch": "vitest",
     "pgn:dataset": "tsx src/cli/dataset.ts",
     "players:cluster": "tsx src/cli/cluster-players.ts",
+    "players:evaluate-archetypes": "tsx src/cli/evaluate-archetypes.ts",
     "train": "tsx src/cli/train.ts"
   },
   "dependencies": {
