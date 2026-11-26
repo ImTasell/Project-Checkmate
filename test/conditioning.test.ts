@@ -28,11 +28,19 @@ describe("human skill conditioning", () => {
     expect(getMoverElo({ fen: blackToMove, whiteElo: 1200, blackElo: 1800 })).toBe(1800);
   });
 
-  it("appends skill features to the existing position encoding", () => {
-    const features = encodeModelInput(whiteToMove, 1600);
+  it("appends skill and style features to the existing position encoding", () => {
+    const style = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9];
+    const features = encodeModelInput(whiteToMove, 1600, style);
     expect(features).toHaveLength(MODEL_INPUT_FEATURES);
-    expect(MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + 2);
+    expect(MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + SKILL_FEATURES + STYLE_FEATURES);
     expect(features[POSITION_FEATURES]).toBe(0.5);
     expect(features[POSITION_FEATURES + 1]).toBe(1);
+    expect(Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES))).toEqual(style);
+  });
+
+  it("provides neutral style features for legacy samples and validates profile shape", () => {
+    expect(Array.from(encodeStyleFeatures())).toEqual(new Array(STYLE_FEATURES).fill(0));
+    expect(() => encodeStyleFeatures([0.1])).toThrow();
+    expect(() => encodeStyleFeatures([0, 0, 0, 0, 0, 0, 0, 0, Number.NaN])).toThrow();
   });
 });
