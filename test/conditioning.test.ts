@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { POSITION_FEATURES } from "../src/chess/position.js";
+import { STYLE_FEATURES } from "../src/data/style.js";
 import {
   encodeModelInput,
   encodeSkillFeatures,
+  encodeStyleFeatures,
   getMoverElo,
   MODEL_INPUT_FEATURES,
+  SKILL_FEATURES,
 } from "../src/model/conditioning.js";
 
 const whiteToMove = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
