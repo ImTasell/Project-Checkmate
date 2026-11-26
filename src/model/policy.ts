@@ -3,6 +3,7 @@ import type { HumanMoveSample } from "../data/pgn.js";
 import { encodeArchetypeFeatures, type ArchetypeEncoderModel } from "../data/archetypes.js";
 import {
   CONTINUOUS_MODEL_INPUT_FEATURES,
+  encodeDecisionFeatures,
   encodeSkillFeatures,
   encodeStyleFeatures,
   encodeTrainingSample,
@@ -80,6 +81,7 @@ export function rankLegalMoves(
   playerElo?: number,
   styleFeatures?: readonly number[],
   archetypeModel?: ArchetypeEncoderModel,
+  decisionFeatures?: readonly number[],
 ): Array<{ move: string; score: number }> {
   if (!legalMoves.length) return [];
   if (fenFeatures.length !== POSITION_FEATURES) {
@@ -92,6 +94,7 @@ export function rankLegalMoves(
   inputFeatures.set(encodeStyleFeatures(styleFeatures), POSITION_FEATURES + SKILL_FEATURES);
   const archetypeFeatures = encodeArchetypeFeatures(styleFeatures, archetypeModel);
   inputFeatures.set(archetypeFeatures, CONTINUOUS_MODEL_INPUT_FEATURES);
+  inputFeatures.set(encodeDecisionFeatures(decisionFeatures), CONTINUOUS_MODEL_INPUT_FEATURES + archetypeFeatures.length);
   const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();

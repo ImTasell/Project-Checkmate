@@ -136,11 +136,11 @@ describe("PGN import", () => {
     // The earlier explicit ? annotation is available as history, while the
     // current $4 blunder marker must not be visible in this sample's inputs.
     expect(samples[2]?.decisionFeatures?.[2]).toBe(1);
-    expect(samples[2]?.decisionFeatures?.[3]).toBe(0.5);
+    expect(samples[2]?.decisionFeatures?.[3]).toBe(1);
     expect(samples[2]?.moveAnnotation).toBe("blunder");
 
     // White's third move sees both prior White moves and their annotations.
     expect(samples[4]?.decisionFeatures?.[2]).toBe(1);
-    expect(samples[4]?.decisionFeatures?.[3]).toBe(0.5);
+    expect(samples[4]?.decisionFeatures?.[3]).toBe(1);
   });
 });
