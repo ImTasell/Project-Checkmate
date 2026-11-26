@@ -1,9 +1,8 @@
 import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
-import type { ArchetypeEncoderModel } from "../data/archetypes.js";
+import { encodeArchetypeFeatures, type ArchetypeEncoderModel } from "../data/archetypes.js";
 import {
   CONTINUOUS_MODEL_INPUT_FEATURES,
-  encodeArchetypeFeatures,
   encodeSkillFeatures,
   encodeStyleFeatures,
   encodeTrainingSample,

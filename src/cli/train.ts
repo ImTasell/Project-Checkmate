@@ -21,7 +21,7 @@ console.log(archetypeModel
   : "No archetype file found; training with continuous style features only.");
 await tf.ready();
 const model = createPolicyModel();
-await trainPolicy(model, samples, { archetypeModel });
+await trainPolicy(model, samples, archetypeModel ? { archetypeModel } : {});
 await savePolicyModel(model, resolve(modelArg), archetypeModel);
 model.dispose();
 console.log(`Saved model and conditioning metadata to ${resolve(modelArg)}`);
