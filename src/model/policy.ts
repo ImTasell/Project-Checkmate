@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
-import { POSITION_FEATURES } from "../chess/position.js";
+import { encodePosition, POSITION_FEATURES } from "../chess/position.js";
 import type { HumanMoveSample } from "../data/pgn.js";
 
 export const MOVE_CLASSES = 64 * 64;
@@ -35,7 +35,9 @@ export async function trainPolicy(
   options: TrainingOptions = {},
 ): Promise<tf.History> {
   if (samples.length < 2) throw new Error("Need at least two human move samples to train.");
-  const xs = tf.tensor2d(samples.map((sample) => sample.features), [samples.length, POSITION_FEATURES]);
+  // Re-encode FENs at training time. Keeping compact FEN+move JSONL avoids
+  // writing 773 floats for every position in large human-game datasets.
+  const xs = tf.tensor2d(samples.map((sample) => Array.from(encodePosition(sample.fen))), [samples.length, POSITION_FEATURES]);
   const ys = tf.tensor1d(samples.map((sample) => sample.moveIndex), "int32");
 
   try {
