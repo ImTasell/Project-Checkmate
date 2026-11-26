@@ -1,11 +1,10 @@
 import { Chess } from "chess.js";
-import { encodeMove, encodePosition, POSITION_FEATURES } from "../chess/position.js";
+import { encodeMove } from "../chess/position.js";
 
 export interface HumanMoveSample {
   fen: string;
   moveUci: string;
   moveIndex: number;
-  features: number[];
   result: "1-0" | "0-1" | "1/2-1/2" | "*";
   whiteElo?: number;
   blackElo?: number;
@@ -21,10 +20,7 @@ export interface PgnImportStats {
 function splitPgnGames(pgn: string): string[] {
   const normalized = pgn.replace(/^\uFEFF/, "").trim();
   if (!normalized) return [];
-
-  // A new game begins with its Event tag. PGN files commonly concatenate games.
-  const chunks = normalized.split(/(?=^\[Event\s+)/m).map((part) => part.trim()).filter(Boolean);
-  return chunks.length ? chunks : [normalized];
+  return normalized.split(/(?=^\[Event\s+)/m).map((part) => part.trim()).filter(Boolean);
 }
 
 function parseElo(value: string | undefined): number | undefined {
@@ -53,18 +49,11 @@ export function importPgn(pgn: string): { samples: HumanMoveSample[]; stats: Pgn
       for (let ply = 0; ply < moves.length; ply += 1) {
         const move = moves[ply];
         if (!move) continue;
-        const fen = move.before;
         const moveUci = `${move.from}${move.to}${move.promotion ?? ""}`;
-        const features = encodePosition(fen);
-        if (features.length !== POSITION_FEATURES) {
-          throw new Error("Position encoder returned an unexpected feature count.");
-        }
-
         const sample: HumanMoveSample = {
-          fen,
+          fen: move.before,
           moveUci,
           moveIndex: encodeMove(moveUci),
-          features: Array.from(features),
           result: normalizedResult,
           ply: ply + 1,
         };
