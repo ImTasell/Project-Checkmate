@@ -5,9 +5,9 @@ import { createInterface } from "node:readline";
 import type { HumanMoveSample } from "./pgn.js";
 import { STYLE_FEATURES } from "./style.js";
 
-export async function writeSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
+async function writeSamples(path: string, samples: Iterable<HumanMoveSample>, append: boolean): Promise<number> {
   await mkdir(dirname(path), { recursive: true });
-  const stream = createWriteStream(path, { encoding: "utf8" });
+  const stream = createWriteStream(path, { encoding: "utf8", flags: append ? "a" : "w" });
   let count = 0;
 
   try {
@@ -25,6 +25,16 @@ export async function writeSamplesJsonl(path: string, samples: Iterable<HumanMov
     });
   }
   return count;
+}
+
+/** Replace a JSONL dataset. */
+export function writeSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
+  return writeSamples(path, samples, false);
+}
+
+/** Add a new, already-deduplicated import batch to an existing JSONL dataset. */
+export function appendSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
+  return writeSamples(path, samples, true);
 }
 
 export async function* readSamplesJsonl(path: string): AsyncGenerator<HumanMoveSample> {

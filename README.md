@@ -10,6 +10,7 @@ A TypeScript chess project focused on learning move preferences from real human 
 - Nine behavioral style values accumulated from each player's earlier moves across imported games.
 - Persistent name-derived player identities, Elo history, move counters, and raw style statistics.
 - Duplicate-game detection so re-importing a PGN does not inflate profiles or duplicate samples.
+- Incremental JSONL appending so new PGN imports extend the existing training dataset.
 - Out-of-order dated games are rejected to prevent later-game behavior from leaking into earlier move predictions.
 - 784 model inputs total: 773 board, 2 skill, and 9 behavior values.
 - 4,096-class from/to move policy.
@@ -32,10 +33,18 @@ npm test
 Download PGN games from a source whose data license and terms permit your intended use. Keep large raw PGNs outside Git (the `data/raw/` directory is ignored).
 
 ```sh
-npm run pgn:dataset -- ./data/raw/human-games.pgn ./data/processed/human-moves.jsonl
+npm run pgn:dataset -- ./data/raw/human-games.pgn
 ```
 
-The optional third argument selects the persistent player-profile database. By default it is `data/processed/player-profiles.json`. Keep using the same file when importing additional PGNs; it stores name-derived player IDs, cumulative raw behavior counters, game/move counts, latest known Elo, last-seen dates, and processed game hashes.
+The dataset command appends new samples to `data/processed/human-moves.jsonl` and updates `data/processed/player-profiles.json`. Optional second and third arguments select custom dataset and profile paths:
+
+```sh
+npm run pgn:dataset -- ./data/raw/another-batch.pgn ./data/processed/human-moves.jsonl ./data/processed/player-profiles.json
+```
+
+Keep using the same dataset and profile paths when importing additional PGNs. The profile database stores name-derived player IDs, cumulative raw behavior counters, game/move counts, latest known Elo, last-seen dates, and processed game hashes. Re-importing the same games does not append duplicate samples.
+
+To rebuild from scratch, remove both the JSONL dataset and its matching profile database before re-importing. Do not reset only one: the profile database is what tracks which games have already been added.
 
 Player identity currently comes from normalized PGN `White`/`Black` names. This lets repeated usernames match across files, but two different people with the same display name can collide. Platform-specific account IDs are the preferred future identity source. Anonymous PGN placeholders are not tracked.
 
@@ -65,7 +74,7 @@ npm run train -- ./data/processed/human-moves.jsonl ./models/human-policy
 
 The trained TensorFlow.js model is saved as `model.json` and `weights.bin`. Training conditions each move prediction on the rating and observed behavior of the player who made that move. The inference helper `rankLegalMoves()` accepts the same Elo and style vector so a caller can provide a desired or live profile.
 
-**Model compatibility:** the model input width is 784. Retrain models created by earlier commits; existing JSONL datasets can be reused and regenerated to include persistent player history.
+**Model compatibility:** the model input width is 784. Retrain models created by earlier commits; existing JSONL samples remain readable.
 
 Training currently uses move-from/move-to labels; promotion type is retained in the dataset's UCI move but is not yet a separate model output.
 
