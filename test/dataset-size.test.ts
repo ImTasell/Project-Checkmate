@@ -14,5 +14,6 @@ describe("compact human move samples", () => {
     expect(samples[0]?.moveUci).toBe("e2e4");
     expect(samples[0]?.moveIndex).toBe(796);
     expect("features" in (samples[0] ?? {})).toBe(false);
+    expect(samples[0]?.styleFeatures).toHaveLength(9);
   });
 });
