@@ -8,7 +8,7 @@ A TypeScript chess project focused on learning move preferences from real human 
 - 773-value position encoding: 12 piece planes, side to move, and castling rights.
 - 4,096-class from/to move policy.
 - TensorFlow.js policy model and training loop.
-- JSONL dataset output and portable model artifact saving.
+- Compact JSONL dataset output and portable model artifact saving.
 - Unit tests and GitHub Actions build/test workflow.
 
 ## Setup
@@ -29,7 +29,7 @@ Download PGN games from a source whose data license and terms permit your intend
 npm run pgn:dataset -- ./data/raw/human-games.pgn ./data/processed/human-moves.jsonl
 ```
 
-Each JSONL record contains the position FEN, encoded features, chosen human UCI move, move class, result, ply, and available player Elo values.
+Each JSONL record stores a compact FEN, chosen human UCI move, move class, game result, ply, and available player Elo values. Position features are generated during training instead of storing 773 floats per move, keeping datasets substantially smaller.
 
 ## Train the first policy
 
