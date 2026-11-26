@@ -73,11 +73,14 @@ if (!Number.isInteger(epochs) || epochs < 1 || epochs > 50) {
 const samples: HumanMoveSample[] = [];
 for await (const sample of readSamplesJsonl(resolve(datasetArg))) samples.push(sample);
 const profiles = await loadPlayerProfileDatabase(resolve(profilesArg));
-const labeled = samples.filter((sample) =>
-  sample.playerId
-  && profiles.players[sample.playerId]?.moves >= 24
-  && getDecisionQualityLabel(sample) !== undefined,
-);
+const labeled = samples.filter((sample) => {
+  const playerId = sample.playerId;
+  if (!playerId) return false;
+  const profile = profiles.players[playerId];
+  return profile !== undefined
+    && profile.moves >= 24
+    && getDecisionQualityLabel(sample) !== undefined;
+});
 const playerIds = [...new Set(labeled.map((sample) => sample.playerId as string))]
   .sort((a, b) => stableHash(a) - stableHash(b) || a.localeCompare(b));
 const testPlayerCount = Math.max(1, Math.floor(playerIds.length * 0.2));
