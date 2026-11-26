@@ -1,0 +1,34 @@
+{
+  "name": "project-checkmate",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A chess bot that learns move preferences from human games.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pgn:dataset": "tsx src/cli/dataset.ts",
+    "players:cluster": "tsx src/cli/cluster-players.ts",
+    "players:evaluate-archetypes": "tsx src/cli/evaluate-archetypes.ts",
+    "train": "tsx src/cli/train.ts",
+    "train:quality": "tsx src/cli/train-quality.ts",
+    "evaluate:quality": "tsx src/cli/evaluate-quality.ts",
+    "analyze:quality": "tsx src/cli/analyze-quality.ts",
+    "choose:move": "tsx src/cli/choose-move.ts",
+    "players:profiles": "tsx src/cli/player-profiles.ts"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "4.22.0",
+    "chess.js": "1.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.14.0",
+    "tsx": "4.19.3",
+    "typescript": "5.8.3",
+    "vitest": "3.1.1"
+  }
+}
