@@ -23,13 +23,11 @@ const samplePgn = `[Event "Unit Test"]
 describe("PGN import", () => {
   it("extracts positions, UCI moves, ratings and results from multiple games", () => {
     const { samples, stats } = importPgn(samplePgn);
-    expect(stats).toEqual({
-      games: 2,
-      positions: 6,
-      skippedGames: 0,
-      duplicateGames: 0,
-      outOfOrderGames: 0,
-    });
+    expect(stats.games).toBe(2);
+    expect(stats.positions).toBe(6);
+    expect(stats.skippedGames).toBe(0);
+    expect(stats.duplicateGames).toBe(0);
+    expect(stats.outOfOrderGames).toBe(0);
     expect(samples[0]?.moveUci).toBe("e2e4");
     expect(samples[0]?.whiteElo).toBe(1200);
     expect(samples[0]?.blackElo).toBe(1300);
@@ -110,5 +108,39 @@ describe("PGN import", () => {
     expect(outOfOrder.samples).toHaveLength(0);
     expect(outOfOrder.stats.outOfOrderGames).toBe(1);
     expect(database.players["pgn-name:alice"]?.games).toBe(1);
+  });
+
+  it("imports clock annotations and pre-move decision context without target leakage", () => {
+    const pgn = `[Event "Decision annotations"]
+[White "Alice"]
+[Black "Bob"]
+[TimeControl "300+2"]
+[Result "*"]
+
+1. e4? {[%clk 0:04:50] [%emt 0:00:10]} e5 {[%clk 0:04:55] [%emt 0:00:05]}
+2. Nf3 $4 {[%clk 0:04:30] [%emt 0:00:20]} Nc6
+3. Bb5 *
+`;
+    const { samples, stats } = importPgn(pgn);
+    expect(stats.annotatedMoves).toBe(2);
+    expect(stats.clockAnnotatedMoves).toBe(3);
+
+    expect(samples[0]?.decisionFeatures).toEqual([0, 1, 0, 0]);
+    expect(samples[0]?.moveAnnotation).toBe("mistake");
+    expect(samples[0]?.annotationNags).toEqual([2]);
+    expect(samples[0]?.elapsedSeconds).toBe(10);
+    expect(samples[0]?.clockRemainingSeconds).toBe(290);
+
+    // White's second move begins with the clock reported after White's first move.
+    expect(samples[2]?.decisionFeatures?.[0]).toBeCloseTo(1 - 290 / 300);
+    // The earlier explicit ? annotation is available as history, while the
+    // current $4 blunder marker must not be visible in this sample's inputs.
+    expect(samples[2]?.decisionFeatures?.[2]).toBe(1);
+    expect(samples[2]?.decisionFeatures?.[3]).toBe(0.5);
+    expect(samples[2]?.moveAnnotation).toBe("blunder");
+
+    // White's third move sees both prior White moves and their annotations.
+    expect(samples[4]?.decisionFeatures?.[2]).toBe(1);
+    expect(samples[4]?.decisionFeatures?.[3]).toBe(0.5);
   });
 });

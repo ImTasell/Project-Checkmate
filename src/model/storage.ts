@@ -2,9 +2,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LayersModel } from "@tensorflow/tfjs";
 import { MODEL_INPUT_FEATURES } from "./conditioning.js";
+import { DECISION_FEATURE_NAMES } from "../data/decision.js";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
 
-/** Save a TFJS LayersModel and the exact feature transform needed at inference. */
 export async function savePolicyModel(
   model: LayersModel,
   outputDirectory: string,
@@ -49,5 +49,6 @@ export async function savePolicyModel(
     modelInputFeatures: MODEL_INPUT_FEATURES,
     archetypeConditioning: archetypeModel ? "enabled" : "disabled",
     archetypeModel: archetypeModel ?? null,
+    decisionFeatureNames: DECISION_FEATURE_NAMES,
   }, null, 2)}\n`, "utf8");
 }

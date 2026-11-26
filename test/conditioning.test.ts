@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { POSITION_FEATURES } from "../src/chess/position.js";
 import { STYLE_FEATURES } from "../src/data/style.js";
+import { DECISION_FEATURES } from "../src/data/decision.js";
 import {
   CONTINUOUS_MODEL_INPUT_FEATURES,
+  encodeDecisionFeatures,
   encodeModelInput,
   encodeSkillFeatures,
   encodeStyleFeatures,
@@ -38,13 +40,20 @@ describe("human skill conditioning", () => {
     const features = encodeModelInput(whiteToMove, 1600, style);
     expect(features).toHaveLength(MODEL_INPUT_FEATURES);
     expect(CONTINUOUS_MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + SKILL_FEATURES + STYLE_FEATURES);
-    expect(MODEL_INPUT_FEATURES).toBe(CONTINUOUS_MODEL_INPUT_FEATURES + ARCHETYPE_FEATURES);
+    expect(MODEL_INPUT_FEATURES).toBe(CONTINUOUS_MODEL_INPUT_FEATURES + ARCHETYPE_FEATURES + DECISION_FEATURES);
     expect(features[POSITION_FEATURES]).toBe(0.5);
     expect(features[POSITION_FEATURES + 1]).toBe(1);
     Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES, CONTINUOUS_MODEL_INPUT_FEATURES)).forEach((value, index) => {
       expect(value).toBeCloseTo(style[index] ?? 0, 5);
     });
-    expect(Array.from(features.slice(CONTINUOUS_MODEL_INPUT_FEATURES))).toEqual(new Array(ARCHETYPE_FEATURES).fill(0));
+    expect(Array.from(features.slice(CONTINUOUS_MODEL_INPUT_FEATURES, CONTINUOUS_MODEL_INPUT_FEATURES + ARCHETYPE_FEATURES))).toEqual(new Array(ARCHETYPE_FEATURES).fill(0));
+    expect(Array.from(features.slice(CONTINUOUS_MODEL_INPUT_FEATURES + ARCHETYPE_FEATURES))).toEqual(new Array(DECISION_FEATURES).fill(0));
+  });
+
+  it("encodes pre-move decision context and supplies neutral values for legacy samples", () => {
+    expect(Array.from(encodeDecisionFeatures([0.2, 1, 0.5, 0.25]))).toEqual([0.2, 1, 0.5, 0.25]);
+    expect(Array.from(encodeDecisionFeatures())).toEqual(new Array(DECISION_FEATURES).fill(0));
+    expect(() => encodeDecisionFeatures([1])).toThrow();
   });
 
   it("provides neutral style features for legacy samples and validates profile shape", () => {

@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline";
 import type { HumanMoveSample } from "./pgn.js";
+import { DECISION_FEATURES } from "./decision.js";
 import { STYLE_FEATURES } from "./style.js";
 
 async function writeSamples(path: string, samples: Iterable<HumanMoveSample>, append: boolean): Promise<number> {
@@ -27,12 +28,10 @@ async function writeSamples(path: string, samples: Iterable<HumanMoveSample>, ap
   return count;
 }
 
-/** Replace a JSONL dataset. */
 export function writeSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
   return writeSamples(path, samples, false);
 }
 
-/** Add a new, already-deduplicated import batch to an existing JSONL dataset. */
 export function appendSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
   return writeSamples(path, samples, true);
 }
@@ -72,5 +71,16 @@ function isSample(value: unknown): value is HumanMoveSample {
       Array.isArray(sample.styleFeatures)
       && sample.styleFeatures.length === STYLE_FEATURES
       && sample.styleFeatures.every((feature) => typeof feature === "number" && Number.isFinite(feature) && feature >= 0 && feature <= 1)
-    ));
+    ))
+    && (sample.decisionFeatures === undefined || (
+      Array.isArray(sample.decisionFeatures)
+      && sample.decisionFeatures.length === DECISION_FEATURES
+      && sample.decisionFeatures.every((feature) => typeof feature === "number" && Number.isFinite(feature) && feature >= 0 && feature <= 1)
+    ))
+    && (sample.annotationNags === undefined || (
+      Array.isArray(sample.annotationNags)
+      && sample.annotationNags.every((nag) => Number.isInteger(nag) && nag > 0)
+    ))
+    && (sample.elapsedSeconds === undefined || (typeof sample.elapsedSeconds === "number" && Number.isFinite(sample.elapsedSeconds) && sample.elapsedSeconds >= 0))
+    && (sample.clockRemainingSeconds === undefined || (typeof sample.clockRemainingSeconds === "number" && Number.isFinite(sample.clockRemainingSeconds) && sample.clockRemainingSeconds >= 0));
 }
