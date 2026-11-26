@@ -15,13 +15,13 @@ interface PolicyMetrics {
   samples: number;
 }
 
-function stableBucket(value: string): number {
+function stableHash(value: string): number {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
     hash ^= value.charCodeAt(index);
     hash = Math.imul(hash, 16777619);
   }
-  return (hash >>> 0) % 5;
+  return hash >>> 0;
 }
 
 async function evaluatePolicy(
@@ -91,9 +91,12 @@ if (!Number.isInteger(epochs) || epochs < 1 || epochs > 50) {
 const samples: HumanMoveSample[] = [];
 for await (const sample of readSamplesJsonl(resolve(datasetArg))) samples.push(sample);
 const profiles = await loadPlayerProfileDatabase(resolve(profilesArg));
-const playerIds = Object.keys(profiles.players).sort();
-const testPlayerIds = new Set(playerIds.filter((id) => stableBucket(id) === 0));
-const trainPlayerIds = new Set(playerIds.filter((id) => !testPlayerIds.has(id)));
+const playerIds = Object.keys(profiles.players).sort((a, b) =>
+  stableHash(a) - stableHash(b) || a.localeCompare(b),
+);
+const testPlayerCount = Math.max(1, Math.floor(playerIds.length * 0.2));
+const testPlayerIds = new Set(playerIds.slice(0, testPlayerCount));
+const trainPlayerIds = new Set(playerIds.slice(testPlayerCount));
 
 const trainingSamples = samples.filter((sample) => sample.playerId && trainPlayerIds.has(sample.playerId));
 const testSamples = samples.filter((sample) => sample.playerId && testPlayerIds.has(sample.playerId));
@@ -101,7 +104,7 @@ const excludedUnknownPlayerSamples = samples.length - trainingSamples.length - t
 
 if (trainPlayerIds.size < 6 || testPlayerIds.size < 1 || trainingSamples.length < 20 || testSamples.length < 10) {
   throw new Error(
-    `Not enough player-disjoint data: ${trainPlayerIds.size} train players, ${testPlayerIds.size} test players, ${trainingSamples.length} train moves, ${testSamples.length} test moves. Need at least 6 train players, 1 test player, 20 train moves and 10 test moves.`,
+    `Not enough player-disjoint data: ${trainPlayerIds.size} train players, ${testPlayerIds.size} test players, ${trainingSamples.length} train moves, ${testSamples.length} test moves. Need at least 8 total players (6 train and 1 test), 20 train moves and 10 test moves.`,
   );
 }
 

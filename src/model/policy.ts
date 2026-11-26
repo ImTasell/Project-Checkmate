@@ -2,6 +2,7 @@ import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
 import {
+  CONTINUOUS_MODEL_INPUT_FEATURES,
   encodeArchetypeFeatures,
   encodeSkillFeatures,
   encodeStyleFeatures,
@@ -90,7 +91,8 @@ export function rankLegalMoves(
   inputFeatures.set(fenFeatures, 0);
   inputFeatures.set(encodeSkillFeatures(playerElo), POSITION_FEATURES);
   inputFeatures.set(encodeStyleFeatures(styleFeatures), POSITION_FEATURES + SKILL_FEATURES);
-  inputFeatures.set(encodeArchetypeFeatures(styleFeatures, archetypeModel), MODEL_INPUT_FEATURES - encodeArchetypeFeatures(styleFeatures, archetypeModel).length);
+  const archetypeFeatures = encodeArchetypeFeatures(styleFeatures, archetypeModel);
+  inputFeatures.set(archetypeFeatures, CONTINUOUS_MODEL_INPUT_FEATURES);
   const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();
