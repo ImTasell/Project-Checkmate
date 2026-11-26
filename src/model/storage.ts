@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { LayersModel } from "@tensorflow/tfjs";
 
 /** Save a TFJS LayersModel without requiring the native tfjs-node package. */
@@ -15,6 +15,8 @@ export async function savePolicyModel(model: LayersModel, outputDirectory: strin
       const weights = artifacts.weightData instanceof ArrayBuffer
         ? Buffer.from(artifacts.weightData)
         : Buffer.concat(artifacts.weightData.map((part) => Buffer.from(part)));
+      const topologyJson = JSON.stringify(artifacts.modelTopology);
+      const specsJson = JSON.stringify(artifacts.weightSpecs);
       const modelJson = {
         format: "layers-model",
         generatedBy: "Project Checkmate",
@@ -28,8 +30,8 @@ export async function savePolicyModel(model: LayersModel, outputDirectory: strin
         modelArtifactsInfo: {
           dateSaved: new Date(),
           modelTopologyType: "JSON",
-          modelTopologyBytes: Buffer.byteLength(JSON.stringify(artifacts.modelTopology)),
-          weightSpecsBytes: Buffer.byteLength(JSON.stringify(artifacts.weightSpecs)),
+          modelTopologyBytes: Buffer.byteLength(topologyJson),
+          weightSpecsBytes: Buffer.byteLength(specsJson),
           weightDataBytes: weights.byteLength,
         },
       };
