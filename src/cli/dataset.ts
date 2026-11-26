@@ -14,5 +14,5 @@ if (!inputArg) {
   const { samples, stats } = importPgn(pgn);
   const written = await writeSamplesJsonl(output, samples);
   console.log(`Imported ${stats.games} games; ${stats.positions} positions; skipped ${stats.skippedGames} games.`);
-  console.log(`Wrote ${written} move samples to ${output}`);
+  console.log(`Wrote ${written} move samples with online player style context to ${output}`);
 }
