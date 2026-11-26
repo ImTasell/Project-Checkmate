@@ -4,15 +4,13 @@ A TypeScript chess project focused on learning move preferences from real human 
 
 ## Current foundation
 
-- PGN importer for multi-game files, move-by-move FENs, UCI moves, game results, and per-move mover/opponent Elo metadata.
-- Persistent name-derived player identities and cross-game behavior histories.
-- Unsupervised standardized k-means clustering for data-derived player archetypes.
-- Move-policy conditioning on continuous style and learned archetype profiles.
-- PGN decision context: pre-move clock pressure and the player's history of explicitly annotated moves.
-- Current-move elapsed time, remaining clock, and explicit NAG annotations are retained as target metadata, not leaked into the move-policy inputs.
-- 795 model inputs total: 773 board, 2 skill, 9 continuous behavior, 7 archetype, and 4 decision-context values.
-- 4,096-class from/to move policy.
-- TensorFlow.js training, portable model artifacts, dataset importer, and automated evaluation tools.
+- PGN importer for multi-game files, move-by-move FENs, UCI moves, results, Elo, explicit NAG annotations, and clock comments.
+- Persistent player identities, accumulated behavioral histories, and data-derived player archetypes.
+- Move-policy conditioning on board position, player skill, continuous style, archetype, and pre-move decision context.
+- A separate decision-quality classifier that learns from explicitly annotated human moves.
+- Unannotated moves are excluded from decision-quality training rather than being treated as good decisions.
+- Decision-quality inference evaluates a position plus the move actually played and returns probabilities for seven annotation categories.
+- Model training, player-disjoint evaluation, compact JSONL datasets, and portable TensorFlow.js artifacts.
 
 ## Setup
 
@@ -26,48 +24,55 @@ npm test
 
 ## Build a human-game dataset
 
-Import PGNs from sources whose license and terms permit your intended use. Large raw PGNs stay outside Git:
+Import PGNs from sources whose license and terms permit your intended use:
 
 ```sh
 npm run pgn:dataset -- ./data/raw/human-games.pgn
 ```
 
-The importer appends samples to `data/processed/human-moves.jsonl` and updates persistent profiles in `data/processed/player-profiles.json`. Re-importing games already in that profile database does not duplicate samples.
+The importer appends samples to `data/processed/human-moves.jsonl` and updates persistent player profiles. Re-importing known games does not duplicate training samples.
 
-### Decision context
+### Decision context and annotations
 
-When PGNs provide a `TimeControl` header and per-move `[%clk ...]` comments, Checkmate can derive a pre-move time-pressure estimate from the clock reported after the player's previous move. When comments provide `[%emt ...]`, elapsed thinking time is stored as metadata for the current move.
+When PGNs provide a `TimeControl` header and `[%clk ...]` comments, the importer derives a pre-move clock-pressure estimate. `[%emt ...]` is stored as metadata for the target move. Explicit suffix annotations and numeric NAGs are also retained.
 
-The importer also captures explicit PGN annotation glyphs (`!`, `?`, `!!`, `??`, `!?`, `?!`, and numeric NAGs). The current move's annotation and elapsed time are target metadata only. The model receives only the player's earlier annotated-move history and pre-move clock context.
+The move policy receives only pre-move clock and earlier annotated-move history. Current-move annotations and elapsed time are target metadata, not policy inputs.
 
-Decision feature order:
-1. Estimated time pressure (0-1), only when a base time and prior clock reading are available.
-2. Time-known flag.
-3. Prior explicitly annotated mistake rate (from annotations on earlier moves by this player).
-4. Prior annotation coverage (annotated earlier moves divided by earlier moves).
+Annotations are human/editor judgments, not engine-verified truth. They are often sparse and subjective.
 
-Unknown clock data remains unknown instead of being fabricated. Most ordinary PGN archives omit clock comments and annotations; those records remain valid and receive neutral/unknown decision features. Explicit annotations are human/editor judgments, not ground-truth engine evaluations. They should not be interpreted as reliable labels for every move.
-
-## Discover and use player archetypes
+## Discover and train player archetypes
 
 ```sh
 npm run players:cluster
-npm run train -- ./data/processed/human-moves.jsonl ./models/human-policy ./data/processed/player-archetypes.json
+npm run train
 ```
 
-Archetype transformations are saved in `conditioning.json` alongside the model and must be reused at inference. Policy input width is now 795; earlier 784-input models must be retrained. Existing JSONL data stays readable; rebuild the dataset to populate the new decision-context fields.
+The policy uses 795 inputs and its archetype transform is stored alongside the model.
 
-## Evaluate archetype conditioning
+## Train the decision-quality classifier
 
 ```sh
-npm run players:evaluate-archetypes
+npm run train:quality
 ```
 
-This compares continuous-style and archetype-conditioned policies on held-out players. Results measure move imitation accuracy, not playing strength or human-likeness by themselves.
+Optional arguments are:
 
-## Direction
+```sh
+npm run train:quality -- ./data/processed/human-moves.jsonl ./models/decision-quality ./data/processed/player-archetypes.json 10
+```
 
-1. Collect licensed human PGNs with reliable time annotations and explicit move annotations.
-2. Evaluate move imitation by skill band, clock state, and annotation coverage.
-3. Add calibrated decision-quality modeling only after enough trustworthy annotated data is available.
-4. Add legal-move masking and promotion-specific move classes.
+This trains a separate model using only explicitly annotated moves. Its inputs contain the board position, the move actually played (from/to and promotion encodings), player skill/style/archetype, and pre-move decision context. The annotation on the target move is used only as the training label. Supported labels are good, brilliant, interesting, mistake, dubious, blunder, and worst; generic NAGs without a quality meaning are excluded.
+
+The model predicts how an annotated move was judged by a human/editor. This is weak supervision, not an objective engine evaluation or proof that a move is objectively bad.
+
+## Evaluate decision-quality generalization
+
+```sh
+npm run evaluate:quality
+```
+
+This uses a deterministic player-disjoint split. Archetypes, when available, are learned from training players only. The report contains accuracy, macro-F1, per-class precision/recall/F1, class counts, and a confusion matrix. A small or highly sparse annotated corpus may fail minimum-data checks; collect more explicitly annotated games rather than silently treating unannotated moves as correct.
+
+## Limitations and direction
+
+The move policy still uses 4,096 from/to classes, so promotion types are not separate policy outputs yet. Decision annotations are not objective quality labels, and time-pressure signals are missing for games without clock comments. Future evaluation should include stronger player-disjoint and multi-source datasets before claims about human-like play.

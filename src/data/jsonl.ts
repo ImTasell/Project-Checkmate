@@ -3,8 +3,12 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline";
 import type { HumanMoveSample } from "./pgn.js";
-import { DECISION_FEATURES } from "./decision.js";
+import { DECISION_FEATURES, type MoveAnnotation } from "./decision.js";
 import { STYLE_FEATURES } from "./style.js";
+
+const MOVE_ANNOTATIONS: readonly MoveAnnotation[] = [
+  "good", "mistake", "brilliant", "blunder", "interesting", "dubious", "worst", "other",
+];
 
 async function writeSamples(path: string, samples: Iterable<HumanMoveSample>, append: boolean): Promise<number> {
   await mkdir(dirname(path), { recursive: true });
@@ -81,6 +85,7 @@ function isSample(value: unknown): value is HumanMoveSample {
       Array.isArray(sample.annotationNags)
       && sample.annotationNags.every((nag) => Number.isInteger(nag) && nag > 0)
     ))
+    && (sample.moveAnnotation === undefined || MOVE_ANNOTATIONS.includes(sample.moveAnnotation))
     && (sample.elapsedSeconds === undefined || (typeof sample.elapsedSeconds === "number" && Number.isFinite(sample.elapsedSeconds) && sample.elapsedSeconds >= 0))
     && (sample.clockRemainingSeconds === undefined || (typeof sample.clockRemainingSeconds === "number" && Number.isFinite(sample.clockRemainingSeconds) && sample.clockRemainingSeconds >= 0));
 }

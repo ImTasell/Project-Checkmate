@@ -12,7 +12,9 @@
     "pgn:dataset": "tsx src/cli/dataset.ts",
     "players:cluster": "tsx src/cli/cluster-players.ts",
     "players:evaluate-archetypes": "tsx src/cli/evaluate-archetypes.ts",
-    "train": "tsx src/cli/train.ts"
+    "train": "tsx src/cli/train.ts",
+    "train:quality": "tsx src/cli/train-quality.ts",
+    "evaluate:quality": "tsx src/cli/evaluate-quality.ts"
   },
   "dependencies": {
     "@tensorflow/tfjs": "4.22.0",
