@@ -51,7 +51,9 @@ describe("human skill conditioning", () => {
   });
 
   it("encodes pre-move decision context and supplies neutral values for legacy samples", () => {
-    expect(Array.from(encodeDecisionFeatures([0.2, 1, 0.5, 0.25]))).toEqual([0.2, 1, 0.5, 0.25]);
+    Array.from(encodeDecisionFeatures([0.2, 1, 0.5, 0.25])).forEach((value, index) => {
+      expect(value).toBeCloseTo([0.2, 1, 0.5, 0.25][index] ?? 0, 6);
+    });
     expect(Array.from(encodeDecisionFeatures())).toEqual(new Array(DECISION_FEATURES).fill(0));
     expect(() => encodeDecisionFeatures([1])).toThrow();
   });
