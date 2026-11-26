@@ -26,8 +26,12 @@ describe("PGN import", () => {
     expect(samples[0]?.moveUci).toBe("e2e4");
     expect(samples[0]?.whiteElo).toBe(1200);
     expect(samples[0]?.blackElo).toBe(1300);
+    expect(samples[0]?.playerElo).toBe(1200);
+    expect(samples[0]?.opponentElo).toBe(1300);
     expect(samples[0]?.result).toBe("1-0");
     expect(samples[1]?.moveUci).toBe("e7e5");
+    expect(samples[1]?.playerElo).toBe(1300);
+    expect(samples[1]?.opponentElo).toBe(1200);
     expect(samples[4]?.moveUci).toBe("d2d4");
   });
 });
