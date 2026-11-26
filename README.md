@@ -61,9 +61,9 @@ Optional arguments are:
 npm run train:quality -- ./data/processed/human-moves.jsonl ./models/decision-quality ./data/processed/player-archetypes.json 10
 ```
 
-This trains a separate model using only explicitly annotated moves. Its inputs contain the board position, the move actually played (from/to and promotion encodings), player skill/style/archetype, and pre-move decision context. The annotation on the target move is used only as the training label. Supported labels are good, brilliant, interesting, mistake, dubious, blunder, and worst; generic NAGs without a quality meaning are excluded.
+This trains a separate model using only explicitly annotated moves. Its inputs contain the board position, the move actually played (from/to and promotion encodings), player skill/style/archetype, pre-move decision context, and 29 move-specific tactical descriptors. Those descriptors cover captures, en passant, castling, promotions, checks, mate/stalemate, piece identities, attacked/defended destination geometry, and immediate legal capture replies. They are reconstructed from the sample FEN and UCI move, so existing JSONL datasets do not need extra stored feature fields. The annotation on the target move is used only as the training label. Supported labels are good, brilliant, interesting, mistake, dubious, blunder, and worst; generic NAGs without a quality meaning are excluded.
 
-The model predicts how an annotated move was judged by a human/editor. This is weak supervision, not an objective engine evaluation or proof that a move is objectively bad.
+The model predicts how an annotated move was judged by a human/editor. This is weak supervision, not an objective engine evaluation or proof that a move is objectively bad. Attack-map counts are geometric signals and may include pinned pieces; only the immediate-capture-reply features use the opponent's legal move list. None of these descriptors is an exchange evaluation or substitute for search.
 
 ## Evaluate decision-quality generalization
 

@@ -11,6 +11,7 @@ import {
   MOVE_CONTEXT_FEATURES,
 } from "../src/model/decision-quality.js";
 import { MODEL_INPUT_FEATURES } from "../src/model/conditioning.js";
+import { TACTICAL_FEATURES } from "../src/chess/tactics.js";
 import type { HumanMoveSample } from "../src/data/pgn.js";
 
 const startFen = new Chess().fen();
@@ -35,7 +36,7 @@ describe("human decision-quality learning", () => {
     expect(getDecisionQualityLabel(sample({ annotationNags: [10] }))).toBeUndefined();
   });
 
-  it("encodes only the selected move, not its target annotation", () => {
+  it("encodes only the selected move and tactical context, never its target annotation", () => {
     const features = encodeMoveContext("e7e8q");
     expect(features).toHaveLength(MOVE_CONTEXT_FEATURES);
     expect(features[52]).toBe(1);
@@ -48,7 +49,9 @@ describe("human decision-quality learning", () => {
     expect(Array.from(encodeDecisionQualitySample(annotated))).toEqual(
       Array.from(encodeDecisionQualitySample(differentlyAnnotated)),
     );
-    expect(DECISION_QUALITY_INPUT_FEATURES).toBe(MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES);
+    expect(DECISION_QUALITY_INPUT_FEATURES).toBe(
+      MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES + TACTICAL_FEATURES,
+    );
   });
 
   it("encodes promotions separately and normal moves without a promotion feature", () => {

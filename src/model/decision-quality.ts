@@ -2,6 +2,7 @@ import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
 import { classifyMoveAnnotation, type MoveAnnotation } from "../data/decision.js";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
+import { encodeMoveTactics, TACTICAL_FEATURES } from "../chess/tactics.js";
 import { encodeModelInput, getMoverElo, MODEL_INPUT_FEATURES } from "./conditioning.js";
 
 export const DECISION_QUALITY_LABELS = [
@@ -16,7 +17,8 @@ export const DECISION_QUALITY_LABELS = [
 
 export type DecisionQualityLabel = typeof DECISION_QUALITY_LABELS[number];
 export const MOVE_CONTEXT_FEATURES = 64 + 64 + 4;
-export const DECISION_QUALITY_INPUT_FEATURES = MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES;
+export const DECISION_QUALITY_INPUT_FEATURES =
+  MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES + TACTICAL_FEATURES;
 
 const PROMOTION_INDEX: Record<string, number> = { q: 0, r: 1, b: 2, n: 3 };
 
@@ -58,7 +60,7 @@ export function getDecisionQualityLabel(
 export function encodeMoveContext(moveUci: string): Float32Array {
   const match = moveUci.toLowerCase().match(/^([a-h][1-8])([a-h][1-8])([qrbn])?$/);
   if (!match?.[1] || !match[2]) {
-    throw new Error(`Invalid UCI move for decision-quality input: ${moveUci}`);
+    throw new Error("Invalid UCI move for decision-quality input: " + moveUci);
   }
 
   const squareIndex = (square: string): number =>
@@ -74,6 +76,8 @@ export function encodeMoveContext(moveUci: string): Float32Array {
 /**
  * The played move is an input because this auxiliary model judges an observed
  * human decision. Annotation labels are strictly targets and never enter here.
+ * Tactical context is reconstructed from the pre-move FEN and UCI move, so
+ * existing JSONL datasets remain usable without storing derived feature arrays.
  */
 export function encodeDecisionQualitySample(
   sample: HumanMoveSample,
@@ -87,9 +91,11 @@ export function encodeDecisionQualitySample(
     sample.decisionFeatures,
   );
   const move = encodeMoveContext(sample.moveUci);
+  const tactics = encodeMoveTactics(sample.fen, sample.moveUci);
   const features = new Float32Array(DECISION_QUALITY_INPUT_FEATURES);
   features.set(base, 0);
   features.set(move, MODEL_INPUT_FEATURES);
+  features.set(tactics, MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES);
   return features;
 }
 
@@ -127,7 +133,7 @@ export async function trainDecisionQualityModel(
     .filter((item): item is { sample: HumanMoveSample; target: number } => item.target !== undefined);
 
   if (labeled.length < 10) {
-    throw new Error(`Need at least 10 explicitly annotated human moves; found ${labeled.length}.`);
+    throw new Error("Need at least 10 explicitly annotated human moves; found " + labeled.length + ".");
   }
   const presentClasses = new Set(labeled.map((item) => item.target));
   if (presentClasses.size < 2) {
@@ -150,7 +156,7 @@ export async function trainDecisionQualityModel(
           if (options.logProgress === false) return;
           const loss = logs?.loss?.toFixed(4) ?? "n/a";
           const accuracy = logs?.acc?.toFixed(4) ?? logs?.accuracy?.toFixed(4) ?? "n/a";
-          console.log(`quality epoch ${epoch + 1}: loss=${loss} accuracy=${accuracy}`);
+          console.log("quality epoch " + (epoch + 1) + ": loss=" + loss + " accuracy=" + accuracy);
         },
       },
     });

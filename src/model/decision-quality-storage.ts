@@ -2,7 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { LayersModel } from "@tensorflow/tfjs";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
-import { DECISION_QUALITY_LABELS, DECISION_QUALITY_INPUT_FEATURES } from "./decision-quality.js";
+import {
+  DECISION_QUALITY_LABELS,
+  DECISION_QUALITY_INPUT_FEATURES,
+  MOVE_CONTEXT_FEATURES,
+} from "./decision-quality.js";
+import { TACTICAL_FEATURES, TACTICAL_FEATURE_NAMES } from "../chess/tactics.js";
 import { MODEL_INPUT_FEATURES } from "./conditioning.js";
 
 export async function saveDecisionQualityModel(
@@ -40,13 +45,17 @@ export async function saveDecisionQualityModel(
       };
     },
   });
-  await writeFile(resolve(directory, "quality-conditioning.json"), `${JSON.stringify({
-    version: 1,
+  const metadata = {
+    version: 2,
     inputFeatures: DECISION_QUALITY_INPUT_FEATURES,
     policyContextFeatures: MODEL_INPUT_FEATURES,
+    moveContextFeatures: MOVE_CONTEXT_FEATURES,
+    tacticalContextFeatures: TACTICAL_FEATURES,
     labels: DECISION_QUALITY_LABELS,
     moveFeatures: ["from-square-one-hot-64", "to-square-one-hot-64", "promotion-one-hot-4"],
+    tacticalFeatures: TACTICAL_FEATURE_NAMES,
     targetSource: "explicit PGN NAG annotations only",
     archetypeModel: archetypeModel ?? null,
-  }, null, 2)}\n`, "utf8");
+  };
+  await writeFile(resolve(directory, "quality-conditioning.json"), JSON.stringify(metadata, null, 2) + "\n", "utf8");
 }
