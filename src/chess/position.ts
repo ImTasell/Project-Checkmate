@@ -43,7 +43,7 @@ export function encodePosition(fen: string): Float32Array {
 /** UCI from/to encoding: a1a1=0, a1b1=1, ... h8h8=4095. */
 export function encodeMove(uci: string): number {
   if (!/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) {
-    throw new Error(\`Invalid UCI move: \${uci}\`);
+    throw new Error("Invalid UCI move: " + uci);
   }
 
   const squareIndex = (square: string): number =>
