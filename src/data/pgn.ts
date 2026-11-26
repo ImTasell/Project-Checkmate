@@ -1,5 +1,6 @@
 import { Chess } from "chess.js";
 import { encodeMove } from "../chess/position.js";
+import { PlayerStyleAccumulator } from "./style.js";
 
 export interface HumanMoveSample {
   fen: string;
@@ -12,6 +13,8 @@ export interface HumanMoveSample {
   playerElo?: number;
   /** Elo of the opponent faced by the player who made this move. */
   opponentElo?: number;
+  /** Player's behavior fingerprint from their earlier moves in this game. */
+  styleFeatures?: number[];
   ply: number;
 }
 
@@ -48,26 +51,37 @@ export function importPgn(pgn: string): { samples: HumanMoveSample[]; stats: Pgn
         result === "1-0" || result === "0-1" || result === "1/2-1/2" ? result : "*";
       const whiteElo = parseElo(headers.WhiteElo);
       const blackElo = parseElo(headers.BlackElo);
+      const whiteStyle = new PlayerStyleAccumulator();
+      const blackStyle = new PlayerStyleAccumulator();
 
       stats.games += 1;
       for (let ply = 0; ply < moves.length; ply += 1) {
         const move = moves[ply];
         if (!move) continue;
         const moveUci = `${move.from}${move.to}${move.promotion ?? ""}`;
+        const playerElo = move.color === "w" ? whiteElo : blackElo;
+        const opponentElo = move.color === "w" ? blackElo : whiteElo;
+        const playerStyle = move.color === "w" ? whiteStyle : blackStyle;
         const sample: HumanMoveSample = {
           fen: move.before,
           moveUci,
           moveIndex: encodeMove(moveUci),
           result: normalizedResult,
           ply: ply + 1,
+          styleFeatures: playerStyle.snapshot(),
         };
-        const playerElo = move.color === "w" ? whiteElo : blackElo;
-        const opponentElo = move.color === "w" ? blackElo : whiteElo;
         if (whiteElo !== undefined) sample.whiteElo = whiteElo;
         if (blackElo !== undefined) sample.blackElo = blackElo;
         if (playerElo !== undefined) sample.playerElo = playerElo;
         if (opponentElo !== undefined) sample.opponentElo = opponentElo;
         samples.push(sample);
+        playerStyle.observe({
+          piece: move.piece,
+          from: move.from,
+          to: move.to,
+          flags: move.flags,
+          san: move.san,
+        }, move.color);
         stats.positions += 1;
       }
     } catch {
