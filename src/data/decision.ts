@@ -121,8 +121,10 @@ export class MoveDecisionContext {
       this.annotatedMoves += 1;
       this.negativeAnnotations += nags.filter((nag) => NEGATIVE_NAGS.has(nag)).length;
     }
-    if (clockRemainingSeconds !== undefined && Number.isFinite(clockRemainingSeconds) && clockRemainingSeconds >= 0) {
-      this.lastClockRemainingSeconds = clockRemainingSeconds;
-    }
+    this.lastClockRemainingSeconds = clockRemainingSeconds !== undefined
+      && Number.isFinite(clockRemainingSeconds)
+      && clockRemainingSeconds >= 0
+      ? clockRemainingSeconds
+      : undefined;
   }
 }

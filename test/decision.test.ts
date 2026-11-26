@@ -41,4 +41,13 @@ describe("human decision context", () => {
     context.observe([], 20);
     expect(context.snapshot()).toEqual([0, 0, 0, 0]);
   });
+
+  it("does not assume the starting clock is still available after an unreported move", () => {
+    const context = new MoveDecisionContext(300);
+    expect(context.snapshot()).toEqual([0, 1, 0, 0]);
+    context.observe([], undefined);
+    expect(context.snapshot()).toEqual([0, 0, 0, 0]);
+    context.observe([], 120);
+    expect(context.snapshot()).toEqual([0.6, 1, 0, 0]);
+  });
 });
