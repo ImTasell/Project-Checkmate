@@ -18,7 +18,8 @@
     "train:quality": "tsx src/cli/train-quality.ts",
     "evaluate:quality": "tsx src/cli/evaluate-quality.ts",
     "analyze:quality": "tsx src/cli/analyze-quality.ts",
-    "choose:move": "tsx src/cli/choose-move.ts"
+    "choose:move": "tsx src/cli/choose-move.ts",
+    "players:profiles": "tsx src/cli/player-profiles.ts"
   },
   "dependencies": {
     "@tensorflow/tfjs": "4.22.0",

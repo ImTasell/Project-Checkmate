@@ -5,7 +5,7 @@ A TypeScript chess project focused on learning move preferences from real human 
 ## Current foundation
 
 - PGN importer for multi-game files, move-by-move FENs, UCI moves, results, Elo, explicit NAG annotations, and clock comments.
-- Persistent player identities, accumulated behavioral histories, and data-derived player archetypes.
+- Persistent player identities, accumulated behavioral histories, data-derived player archetypes, and descriptive player-tendency reports.
 - Move-policy conditioning on board position, player skill, continuous style, archetype, and pre-move decision context.
 - A separate decision-quality classifier that learns from explicitly annotated human moves.
 - Unannotated moves are excluded from decision-quality training rather than being treated as good decisions.
@@ -41,6 +41,18 @@ When PGNs provide a `TimeControl` header and `[%clk ...]` comments, the importer
 The move policy receives only pre-move clock and earlier annotated-move history. Current-move annotations and elapsed time are target metadata, not policy inputs.
 
 Annotations are human/editor judgments, not engine-verified truth. They are often sparse and subjective.
+
+## Build player tendency profiles
+
+After importing PGNs, generate descriptive profiles from accumulated move histories:
+
+```sh
+npm run players:profiles
+```
+
+The report includes capture/check/forcing-move frequencies, quiet-move frequency, pawn expansion, centralization, piece activity, early queen activity, king movement, castling history, and one-ply unanswered material exposure. Values include evidence counts and use a 24-move default minimum. Quiet-move and exposure counters are populated only for games imported after this feature; older profile files remain readable, but these newer measurements remain unknown until fresh games are imported. An unanswered exposure is not proof of an intentional sacrifice or a measure of objective move quality.
+
+These profiles are observational summaries, not psychological diagnoses or skill ratings. They do not affect policy conditioning or move selection yet.
 
 ## Discover and train player archetypes
 

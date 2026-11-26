@@ -143,4 +143,15 @@ describe("PGN import", () => {
     expect(samples[4]?.decisionFeatures?.[2]).toBe(1);
     expect(samples[4]?.decisionFeatures?.[3]).toBe(1);
   });
+
+  it("records an unanswered exposure only when the opponent captures it on the next move", () => {
+    const database = createPlayerProfileDatabase();
+    const pgn = "[Event \"Exposure history\"]\n[White \"Alice\"]\n[Black \"Bob\"]\n[Result \"*\"]\n\n1. e4 d5 2. exd5 Qxd5 *\n";
+    importPgn(pgn, database);
+    const white = database.players["pgn-name:alice"]?.styleState;
+    expect(white?.unansweredExposureOpportunities).toBe(1);
+    expect(white?.acceptedExposureOpportunities).toBe(1);
+    expect(white?.contextObservedMoves).toBe(2);
+  });
+
 });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Chess } from "chess.js";
 import { encodeMove } from "../chess/position.js";
+import { hasUnansweredCaptureExposure } from "../chess/exposure.js";
 import {
   classifyMoveAnnotation,
   MoveDecisionContext,
@@ -281,6 +282,9 @@ export function importPgn(
       const blackStyle = new PlayerStyleAccumulator(blackRecord?.styleState);
       const whiteDecision = new MoveDecisionContext(baseTimeSeconds);
       const blackDecision = new MoveDecisionContext(baseTimeSeconds);
+      const exposureByPly = moves.map((move) => move
+        ? hasUnansweredCaptureExposure(move.after, move.to)
+        : false);
 
       for (let ply = 0; ply < moves.length; ply += 1) {
         const move = moves[ply];
@@ -290,6 +294,11 @@ export function importPgn(
         const playerElo = isWhite ? whiteElo : blackElo;
         const opponentElo = isWhite ? blackElo : whiteElo;
         const playerStyle = isWhite ? whiteStyle : blackStyle;
+        const previousMove = moves[ply - 1];
+        if (previousMove && move.to === previousMove.to && move.captured !== undefined
+          && exposureByPly[ply - 1] === true) {
+          (previousMove.color === "w" ? whiteStyle : blackStyle).observeAcceptedExposure();
+        }
         const playerDecision = isWhite ? whiteDecision : blackDecision;
         const playerId = isWhite ? whiteId : blackId;
         const opponentId = isWhite ? blackId : whiteId;
@@ -332,6 +341,7 @@ export function importPgn(
           to: move.to,
           flags: move.flags,
           san: move.san,
+          offersUnansweredExposure: exposureByPly[ply] === true,
         }, move.color);
         playerDecision.observe(annotation, clockRemainingSeconds);
         stats.positions += 1;

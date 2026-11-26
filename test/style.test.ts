@@ -55,4 +55,49 @@ describe("online player style fingerprints", () => {
       "confidence",
     ]);
   });
+
+  it("tracks quiet moves and unanswered piece exposure separately", () => {
+    const style = new PlayerStyleAccumulator();
+    style.observe({
+      piece: "n",
+      from: "b1",
+      to: "c3",
+      flags: "n",
+      san: "Nc3",
+      offersUnansweredExposure: true,
+    }, "w");
+    style.observe({
+      piece: "p",
+      from: "e2",
+      to: "e4",
+      flags: "b",
+      san: "e4",
+    }, "w");
+    style.observeAcceptedExposure();
+
+    const state = style.serialize();
+    expect(state.contextObservedMoves).toBe(2);
+    expect(state.quietMoves).toBe(2);
+    expect(state.unansweredExposureOpportunities).toBe(1);
+    expect(state.acceptedExposureOpportunities).toBe(1);
+  });
+
+  it("preserves compatibility with older profiles that lack context counters", () => {
+    const style = new PlayerStyleAccumulator({
+      moves: 20,
+      captures: 3,
+      checks: 2,
+      pawnAdvances: 7,
+      centralityTotal: 4,
+      centralityMoves: 5,
+      earlyQueenMoves: 0,
+      castled: true,
+      kingMoves: 1,
+      activePieceMoves: 5,
+    });
+    expect(style.serialize().moves).toBe(20);
+    expect(style.serialize().contextObservedMoves).toBe(0);
+    expect(style.snapshot()[0]).toBeCloseTo(3 / 20);
+  });
+
 });
