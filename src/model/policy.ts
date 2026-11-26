@@ -1,6 +1,12 @@
 import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
-import { encodeSkillFeatures, encodeTrainingSample, MODEL_INPUT_FEATURES } from "./conditioning.js";
+import {
+  encodeSkillFeatures,
+  encodeStyleFeatures,
+  encodeTrainingSample,
+  MODEL_INPUT_FEATURES,
+  SKILL_FEATURES,
+} from "./conditioning.js";
 import { POSITION_FEATURES } from "../chess/position.js";
 
 export const MOVE_CLASSES = 64 * 64;
@@ -37,7 +43,7 @@ export async function trainPolicy(
 ): Promise<tf.History> {
   if (samples.length < 2) throw new Error("Need at least two human move samples to train.");
   // Re-encode compact FEN+metadata samples on demand to keep JSONL datasets small.
-  // Each position is conditioned on the Elo of the player who made that move.
+  // Inputs include mover Elo and only the style observed before that exact move.
   const xs = tf.tensor2d(
     samples.map((sample) => Array.from(encodeTrainingSample(sample))),
     [samples.length, MODEL_INPUT_FEATURES],
@@ -64,19 +70,27 @@ export async function trainPolicy(
   }
 }
 
+/**
+ * Rank legal moves using a 773-value board encoding, optional player Elo,
+ * and the player's nine-value style fingerprint. The style vector should be
+ * the player's current/desired profile in STYLE_FEATURE_NAMES order.
+ */
 export function rankLegalMoves(
   model: tf.LayersModel,
   fenFeatures: Float32Array,
   legalMoves: Array<{ from: string; to: string; promotion?: string }>,
   playerElo?: number,
+  styleFeatures?: readonly number[],
 ): Array<{ move: string; score: number }> {
   if (!legalMoves.length) return [];
   if (fenFeatures.length !== POSITION_FEATURES) {
     throw new Error(`Expected ${POSITION_FEATURES} position features, received ${fenFeatures.length}.`);
   }
+
   const inputFeatures = new Float32Array(MODEL_INPUT_FEATURES);
   inputFeatures.set(fenFeatures, 0);
   inputFeatures.set(encodeSkillFeatures(playerElo), POSITION_FEATURES);
+  inputFeatures.set(encodeStyleFeatures(styleFeatures), POSITION_FEATURES + SKILL_FEATURES);
   const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();
