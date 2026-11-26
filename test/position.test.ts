@@ -16,7 +16,7 @@ describe("position encoding", () => {
   it("uses a1=0 and h8=4095 for move indexing", () => {
     expect(encodeMove("a1a1")).toBe(0);
     expect(encodeMove("h8h8")).toBe(4095);
-    expect(encodeMove("e7e8q")).toBe(4 * 64 + 4 * 8 + 4);
+    expect(encodeMove("e7e8q")).toBe(52 * 64 + 60);
   });
 
   it("rejects malformed UCI moves", () => {
