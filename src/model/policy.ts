@@ -1,13 +1,13 @@
 import * as tf from "@tensorflow/tfjs";
-import { encodePosition, POSITION_FEATURES } from "../chess/position.js";
 import type { HumanMoveSample } from "../data/pgn.js";
+import { encodeModelInput, encodeTrainingSample, MODEL_INPUT_FEATURES } from "./conditioning.js";
 
 export const MOVE_CLASSES = 64 * 64;
 
 export function createPolicyModel(): tf.Sequential {
   const model = tf.sequential();
   model.add(tf.layers.dense({
-    inputShape: [POSITION_FEATURES],
+    inputShape: [MODEL_INPUT_FEATURES],
     units: 128,
     activation: "relu",
     kernelInitializer: "heNormal",
@@ -35,9 +35,12 @@ export async function trainPolicy(
   options: TrainingOptions = {},
 ): Promise<tf.History> {
   if (samples.length < 2) throw new Error("Need at least two human move samples to train.");
-  // Re-encode FENs at training time. Keeping compact FEN+move JSONL avoids
-  // writing 773 floats for every position in large human-game datasets.
-  const xs = tf.tensor2d(samples.map((sample) => Array.from(encodePosition(sample.fen))), [samples.length, POSITION_FEATURES]);
+  // Re-encode compact FEN+metadata samples on demand to keep JSONL datasets small.
+  // Each position is conditioned on the Elo of the player who made that move.
+  const xs = tf.tensor2d(
+    samples.map((sample) => Array.from(encodeTrainingSample(sample))),
+    [samples.length, MODEL_INPUT_FEATURES],
+  );
   const ys = tf.tensor1d(samples.map((sample) => sample.moveIndex), "int32");
 
   try {
@@ -64,9 +67,16 @@ export function rankLegalMoves(
   model: tf.LayersModel,
   fenFeatures: Float32Array,
   legalMoves: Array<{ from: string; to: string; promotion?: string }>,
+  playerElo?: number,
 ): Array<{ move: string; score: number }> {
   if (!legalMoves.length) return [];
-  const input = tf.tensor2d([Array.from(fenFeatures)], [1, POSITION_FEATURES]);
+  const inputFeatures = new Float32Array(MODEL_INPUT_FEATURES);
+  inputFeatures.set(fenFeatures.subarray(0, MODEL_INPUT_FEATURES - 2), 0);
+  inputFeatures.set(
+    encodeModelInput("8/8/8/8/8/8/8/8 w - - 0 1", playerElo).subarray(MODEL_INPUT_FEATURES - 2),
+    MODEL_INPUT_FEATURES - 2,
+  );
+  const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();
   input.dispose();
