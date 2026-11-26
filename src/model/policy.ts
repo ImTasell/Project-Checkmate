@@ -1,6 +1,7 @@
 import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
-import { encodeModelInput, encodeTrainingSample, MODEL_INPUT_FEATURES } from "./conditioning.js";
+import { encodeSkillFeatures, encodeTrainingSample, MODEL_INPUT_FEATURES } from "./conditioning.js";
+import { POSITION_FEATURES } from "../chess/position.js";
 
 export const MOVE_CLASSES = 64 * 64;
 
@@ -70,12 +71,12 @@ export function rankLegalMoves(
   playerElo?: number,
 ): Array<{ move: string; score: number }> {
   if (!legalMoves.length) return [];
+  if (fenFeatures.length !== POSITION_FEATURES) {
+    throw new Error(`Expected ${POSITION_FEATURES} position features, received ${fenFeatures.length}.`);
+  }
   const inputFeatures = new Float32Array(MODEL_INPUT_FEATURES);
-  inputFeatures.set(fenFeatures.subarray(0, MODEL_INPUT_FEATURES - 2), 0);
-  inputFeatures.set(
-    encodeModelInput("8/8/8/8/8/8/8/8 w - - 0 1", playerElo).subarray(MODEL_INPUT_FEATURES - 2),
-    MODEL_INPUT_FEATURES - 2,
-  );
+  inputFeatures.set(fenFeatures, 0);
+  inputFeatures.set(encodeSkillFeatures(playerElo), POSITION_FEATURES);
   const input = tf.tensor2d([Array.from(inputFeatures)], [1, MODEL_INPUT_FEATURES]);
   const prediction = model.predict(input) as tf.Tensor;
   const scores = prediction.dataSync();
