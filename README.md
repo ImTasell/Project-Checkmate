@@ -11,6 +11,8 @@ A TypeScript chess project focused on learning move preferences from real human 
 - Persistent name-derived player identities, Elo history, move counters, and raw style statistics.
 - Duplicate-game detection so re-importing a PGN does not inflate profiles or duplicate samples.
 - Incremental JSONL appending so new PGN imports extend the existing training dataset.
+- Unsupervised, standardized k-means clustering that discovers recurring player behavior groups from accumulated profiles.
+- Confidence/sample count is used to filter profiles with too little history, not as a behavioral clustering dimension.
 - Out-of-order dated games are rejected to prevent later-game behavior from leaking into earlier move predictions.
 - 784 model inputs total: 773 board, 2 skill, and 9 behavior values.
 - 4,096-class from/to move policy.
@@ -62,9 +64,24 @@ The style vector order is:
 8. Non-pawn piece activity rate.
 9. Confidence, increasing with the number of prior moves observed (saturates at twelve).
 
-These are measurable behavioral signals, not manually assigned labels such as "aggressive" or "positional". They are imperfect proxies and should not be interpreted as a complete chess personality. Clustering real player fingerprints into readable style labels can be evaluated once we have a sufficiently large dataset.
+These are measurable behavioral signals, not manually assigned labels such as "aggressive" or "positional". They are imperfect proxies and should not be interpreted as a complete chess personality.
 
-Position, skill, and style features are generated or compactly stored rather than writing expanded board tensors into JSONL. Older records without player IDs, per-move ratings, or style fields remain supported; missing features receive neutral/unknown encodings.
+## Discover player archetypes
+
+After importing a substantial set of games, cluster the persistent player profiles:
+
+```sh
+npm run players:cluster
+```
+
+This writes `data/processed/player-archetypes.json`. Optional arguments select custom paths, a fixed number of clusters (or `auto`), and the minimum observed moves required for each player:
+
+```sh
+npm run players:cluster -- ./data/processed/player-profiles.json ./data/processed/player-archetypes.json auto 24
+npm run players:cluster -- ./data/processed/player-profiles.json ./data/processed/player-archetypes.json 4 40
+```
+
+The clustering pipeline standardizes eight behavioral measurements and uses deterministic k-means. Automatic cluster-count selection compares candidate counts using a silhouette score. The confidence feature is deliberately excluded from clustering; it is only used indirectly through the minimum-history filter. The resulting labels are short descriptions of the cluster's strongest deviations from the overall player population, not official chess personality categories. Inspect cluster sizes and centroid values before using these archetypes in model training. A small or behaviorally uniform dataset may correctly produce no clusters.
 
 ## Train the first policy
 
@@ -80,7 +97,7 @@ Training currently uses move-from/move-to labels; promotion type is retained in 
 
 ## Direction
 
-1. Validate move imitation on real PGNs with held-out-game evaluation.
-2. Cluster accumulated player fingerprints into data-derived style archetypes and evaluate how well they match held-out games.
+1. Validate archetype stability and move-imitation quality on held-out players and games.
+2. Condition policy training on discovered archetypes and compare results against continuous style vectors.
 3. Add legal-move masking and promotion-specific move classes at inference.
 4. Add opponent adaptation and outcome-aware learning only after the human imitation baseline is measurable.
