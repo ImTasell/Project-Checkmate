@@ -29,6 +29,7 @@ describe("player tendency summaries", () => {
     const summary = buildPlayerPersonality(createProfile());
     expect(summary.eligible).toBe(true);
     expect(summary.tendencies.captureFrequency.value).toBeCloseTo(1 / 3);
+    expect(summary.tendencies.forcingPlayFrequency.value).toBeCloseTo(1 / 3);
     expect(summary.tendencies.quietMoveFrequency.value).toBeCloseTo(2 / 3);
     expect(summary.tendencies.unansweredExposureFrequency.value).toBeCloseTo(1 / 30);
     expect(summary.tendencies.acceptedExposureFrequency.value).toBeCloseTo(1);

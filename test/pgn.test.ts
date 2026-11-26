@@ -146,7 +146,7 @@ describe("PGN import", () => {
 
   it("records an unanswered exposure only when the opponent captures it on the next move", () => {
     const database = createPlayerProfileDatabase();
-    const pgn = "[Event \"Exposure history\"]\n[White \"Alice\"]\n[Black \"Bob\"]\n[Result \"*\"]\n\n1. e4 d5 2. exd5 Qxd5 *\n";
+    const pgn = "[Event \"Exposure history\"]\n[White \"Alice\"]\n[Black \"Bob\"]\n[Result \"*\"]\n\n1. d4 d5 2. c4 dxc4 *\n";
     importPgn(pgn, database);
     const white = database.players["pgn-name:alice"]?.styleState;
     expect(white?.unansweredExposureOpportunities).toBe(1);

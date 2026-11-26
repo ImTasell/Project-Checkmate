@@ -78,6 +78,7 @@ describe("online player style fingerprints", () => {
     const state = style.serialize();
     expect(state.contextObservedMoves).toBe(2);
     expect(state.quietMoves).toBe(2);
+    expect(state.forcingMoves).toBe(0);
     expect(state.unansweredExposureOpportunities).toBe(1);
     expect(state.acceptedExposureOpportunities).toBe(1);
   });

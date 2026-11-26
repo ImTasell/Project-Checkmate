@@ -73,7 +73,6 @@ export function buildPlayerPersonality(
   const moves = state.moves;
   const contextMoves = state.contextObservedMoves;
   const eligible = moves >= minimumMoves;
-  const forcingMoves = Math.min(moves, state.captures + state.checks);
 
   return {
     id: profile.id,
@@ -88,7 +87,7 @@ export function buildPlayerPersonality(
         "Share of the player's recorded moves that were captures."),
       checkFrequency: rate(state.checks, moves, moves, minimumMoves,
         "Share of the player's recorded moves that gave check."),
-      forcingPlayFrequency: rate(forcingMoves, moves, moves, minimumMoves,
+      forcingPlayFrequency: rate(state.forcingMoves, contextMoves, contextMoves, minimumMoves,
         "Share of moves that were captures or checks; a descriptive forcing-move proxy."),
       quietMoveFrequency: rate(state.quietMoves, contextMoves, contextMoves, minimumMoves,
         "Share of context-tracked moves that were neither captures nor checks."),

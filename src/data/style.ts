@@ -43,6 +43,7 @@ export interface PlayerStyleState {
   /** Moves observed after unanswered-exposure tracking was introduced. */
   contextObservedMoves: number;
   quietMoves: number;
+  forcingMoves: number;
   unansweredExposureOpportunities: number;
   acceptedExposureOpportunities: number;
 }
@@ -85,6 +86,7 @@ export class PlayerStyleAccumulator {
   private activePieceMoves: number;
   private contextObservedMoves: number;
   private quietMoves: number;
+  private forcingMoves: number;
   private unansweredExposureOpportunities: number;
   private acceptedExposureOpportunities: number;
 
@@ -102,6 +104,7 @@ export class PlayerStyleAccumulator {
     // Older version-1 profile files remain readable; new-only metrics start unknown.
     this.contextObservedMoves = safeCount(state?.contextObservedMoves);
     this.quietMoves = safeCount(state?.quietMoves);
+    this.forcingMoves = safeCount(state?.forcingMoves);
     this.unansweredExposureOpportunities = safeCount(state?.unansweredExposureOpportunities);
     this.acceptedExposureOpportunities = safeCount(state?.acceptedExposureOpportunities);
   }
@@ -135,6 +138,7 @@ export class PlayerStyleAccumulator {
       activePieceMoves: this.activePieceMoves,
       contextObservedMoves: this.contextObservedMoves,
       quietMoves: this.quietMoves,
+      forcingMoves: this.forcingMoves,
       unansweredExposureOpportunities: this.unansweredExposureOpportunities,
       acceptedExposureOpportunities: this.acceptedExposureOpportunities,
     };
@@ -155,6 +159,7 @@ export class PlayerStyleAccumulator {
     if (isCapture) this.captures += 1;
     if (givesCheck) this.checks += 1;
     if (!isCapture && !givesCheck) this.quietMoves += 1;
+    if (isCapture || givesCheck) this.forcingMoves += 1;
     if (observation.offersUnansweredExposure) this.unansweredExposureOpportunities += 1;
 
     if (observation.piece === "p" && isForwardPawnMove(observation, color)) {
