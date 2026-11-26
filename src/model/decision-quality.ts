@@ -2,7 +2,7 @@ import * as tf from "@tensorflow/tfjs";
 import type { HumanMoveSample } from "../data/pgn.js";
 import { classifyMoveAnnotation, type MoveAnnotation } from "../data/decision.js";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
-import { encodeModelInput, MODEL_INPUT_FEATURES } from "./conditioning.js";
+import { encodeModelInput, getMoverElo, MODEL_INPUT_FEATURES } from "./conditioning.js";
 
 export const DECISION_QUALITY_LABELS = [
   "good",
@@ -81,7 +81,7 @@ export function encodeDecisionQualitySample(
 ): Float32Array {
   const base = encodeModelInput(
     sample.fen,
-    sample.playerElo,
+    getMoverElo(sample),
     sample.styleFeatures,
     archetypeModel,
     sample.decisionFeatures,

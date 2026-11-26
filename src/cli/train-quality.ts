@@ -43,7 +43,10 @@ if (!archetypeModel) console.log("No archetype file found; fixed archetype input
 
 await tf.ready();
 const model = createDecisionQualityModel();
-await trainDecisionQualityModel(model, labeled, { epochs, archetypeModel });
+await trainDecisionQualityModel(model, labeled, {
+  epochs,
+  ...(archetypeModel ? { archetypeModel } : {}),
+});
 await saveDecisionQualityModel(model, resolve(modelArg), archetypeModel);
 model.dispose();
 console.log(`Saved decision-quality model and metadata to ${resolve(modelArg)}`);
