@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 import { createInterface } from "node:readline";
 import type { HumanMoveSample } from "./pgn.js";
+import { STYLE_FEATURES } from "./style.js";
 
 export async function writeSamplesJsonl(path: string, samples: Iterable<HumanMoveSample>): Promise<number> {
   await mkdir(dirname(path), { recursive: true });
@@ -53,5 +54,10 @@ function isSample(value: unknown): value is HumanMoveSample {
     && typeof sample.result === "string"
     && Number.isInteger(sample.ply)
     && (sample.playerElo === undefined || (typeof sample.playerElo === "number" && Number.isFinite(sample.playerElo) && sample.playerElo > 0))
-    && (sample.opponentElo === undefined || (typeof sample.opponentElo === "number" && Number.isFinite(sample.opponentElo) && sample.opponentElo > 0));
+    && (sample.opponentElo === undefined || (typeof sample.opponentElo === "number" && Number.isFinite(sample.opponentElo) && sample.opponentElo > 0))
+    && (sample.styleFeatures === undefined || (
+      Array.isArray(sample.styleFeatures)
+      && sample.styleFeatures.length === STYLE_FEATURES
+      && sample.styleFeatures.every((feature) => typeof feature === "number" && Number.isFinite(feature) && feature >= 0 && feature <= 1)
+    ));
 }
