@@ -20,13 +20,16 @@ export function encodePosition(fen: string): Float32Array {
       const piece = board[row]?.[file];
       if (!piece) continue;
 
-      const plane = PIECE_PLANES[piece.type] + (piece.color === "b" ? 6 : 0);
+      const piecePlane = PIECE_PLANES[piece.type];
+      if (piecePlane === undefined) continue;
+
+      const plane = piecePlane + (piece.color === "b" ? 6 : 0);
       const square = (7 - row) * 8 + file;
       features[plane * 64 + square] = 1;
     }
   }
 
-  const fenFields = fen.split(/\s+/);
+  const fenFields = fen.split(/\\s+/);
   features[768] = fenFields[1] === "w" ? 1 : 0;
   const castling = fenFields[2] ?? "-";
   features[769] = castling.includes("K") ? 1 : 0;
