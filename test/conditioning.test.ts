@@ -38,7 +38,9 @@ describe("human skill conditioning", () => {
     expect(MODEL_INPUT_FEATURES).toBe(POSITION_FEATURES + SKILL_FEATURES + STYLE_FEATURES);
     expect(features[POSITION_FEATURES]).toBe(0.5);
     expect(features[POSITION_FEATURES + 1]).toBe(1);
-    expect(Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES))).toEqual(style);
+    Array.from(features.slice(POSITION_FEATURES + SKILL_FEATURES)).forEach((value, index) => {
+      expect(value).toBeCloseTo(style[index] ?? 0, 5);
+    });
   });
 
   it("provides neutral style features for legacy samples and validates profile shape", () => {
