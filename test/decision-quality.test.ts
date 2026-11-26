@@ -1,3 +1,4 @@
+import * as tf from "@tensorflow/tfjs";
 import { describe, expect, it } from "vitest";
 import { Chess } from "chess.js";
 import {
@@ -9,6 +10,7 @@ import {
   evaluateDecisionQuality,
   getDecisionQualityLabel,
   MOVE_CONTEXT_FEATURES,
+  rankLegalMovesByDecisionQuality,
 } from "../src/model/decision-quality.js";
 import { MODEL_INPUT_FEATURES } from "../src/model/conditioning.js";
 import { TACTICAL_FEATURES } from "../src/chess/tactics.js";
@@ -76,5 +78,43 @@ describe("human decision-quality learning", () => {
 
   it("requires at least two labeled classes to train", () => {
     expect(encodeDecisionQualityTarget(sample({ moveAnnotation: "worst" }))).toBe(6);
+  });
+
+  it("scores every legal move and keeps advisory probabilities separated", () => {
+    const fakeModel = {
+      predict: (input: tf.Tensor) => {
+        const rows = input.shape[0] ?? 0;
+        return tf.tensor2d(
+          Array.from({ length: rows }, () => [0.4, 0.3, 0.1, 0.08, 0.04, 0.05, 0.03]),
+          [rows, DECISION_QUALITY_LABELS.length],
+        );
+      },
+    } as unknown as tf.LayersModel;
+
+    const scores = rankLegalMovesByDecisionQuality(fakeModel, { fen: startFen, playerElo: 1500 });
+    const legalMoves = new Chess(startFen).moves();
+    expect(scores).toHaveLength(legalMoves.length);
+    expect(scores.map((score) => score.move).sort()).toEqual(
+      legalMoves.map((move) => {
+        const parsed = new Chess(startFen);
+        const moveObject = parsed.move(move);
+        return moveObject.from + moveObject.to + (moveObject.promotion ?? "");
+      }).sort(),
+    );
+    expect(scores[0]?.positiveAnnotationProbability).toBeCloseTo(0.7);
+    expect(scores[0]?.interestingAnnotationProbability).toBeCloseTo(0.1);
+    expect(scores[0]?.criticalAnnotationProbability).toBeCloseTo(0.2);
+    expect(scores[0]?.probabilities.reduce((sum, item) => sum + item.probability, 0)).toBeCloseTo(1);
+  });
+
+  it("returns no candidates for checkmate or stalemate without invoking the model", () => {
+    const fakeModel = {
+      predict: () => {
+        throw new Error("Model should not run for terminal positions.");
+      },
+    } as unknown as tf.LayersModel;
+    expect(rankLegalMovesByDecisionQuality(fakeModel, {
+      fen: "7k/6Q1/6K1/8/8/8/8/8 b - - 0 1",
+    })).toEqual([]);
   });
 });

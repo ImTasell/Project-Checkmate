@@ -1,8 +1,10 @@
 import * as tf from "@tensorflow/tfjs";
+import { Chess } from "chess.js";
 import type { HumanMoveSample } from "../data/pgn.js";
 import { classifyMoveAnnotation, type MoveAnnotation } from "../data/decision.js";
 import type { ArchetypeEncoderModel } from "../data/archetypes.js";
 import { encodeMoveTactics, TACTICAL_FEATURES } from "../chess/tactics.js";
+import { encodeMove } from "../chess/position.js";
 import { encodeModelInput, getMoverElo, MODEL_INPUT_FEATURES } from "./conditioning.js";
 
 export const DECISION_QUALITY_LABELS = [
@@ -21,6 +23,8 @@ export const DECISION_QUALITY_INPUT_FEATURES =
   MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES + TACTICAL_FEATURES;
 
 const PROMOTION_INDEX: Record<string, number> = { q: 0, r: 1, b: 2, n: 3 };
+const POSITIVE_LABELS = new Set<DecisionQualityLabel>(["good", "brilliant"]);
+const CRITICAL_LABELS = new Set<DecisionQualityLabel>(["mistake", "dubious", "blunder", "worst"]);
 
 export interface DecisionQualityOptions {
   epochs?: number;
@@ -44,6 +48,23 @@ export interface DecisionQualityMetrics {
   macroF1: number;
   classes: ClassMetrics[];
   confusionMatrix: number[][];
+}
+
+export interface LegalMoveQualityContext {
+  fen: string;
+  playerElo?: number;
+  styleFeatures?: readonly number[];
+  decisionFeatures?: readonly number[];
+}
+
+export interface LegalMoveQualityScore {
+  move: string;
+  predictedLabel: DecisionQualityLabel;
+  confidence: number;
+  positiveAnnotationProbability: number;
+  interestingAnnotationProbability: number;
+  criticalAnnotationProbability: number;
+  probabilities: Array<{ label: DecisionQualityLabel; probability: number }>;
 }
 
 export function getDecisionQualityLabel(
@@ -97,6 +118,110 @@ export function encodeDecisionQualitySample(
   features.set(move, MODEL_INPUT_FEATURES);
   features.set(tactics, MODEL_INPUT_FEATURES + MOVE_CONTEXT_FEATURES);
   return features;
+}
+
+function buildCandidateSample(
+  context: LegalMoveQualityContext,
+  move: { from: string; to: string; promotion?: string },
+): HumanMoveSample {
+  const moveUci = move.from + move.to + (move.promotion ?? "");
+  const sample: HumanMoveSample = {
+    fen: context.fen,
+    moveUci,
+    moveIndex: encodeMove(moveUci),
+    result: "*",
+    ply: 0,
+  };
+  if (context.playerElo !== undefined) sample.playerElo = context.playerElo;
+  if (context.styleFeatures !== undefined) sample.styleFeatures = [...context.styleFeatures];
+  if (context.decisionFeatures !== undefined) sample.decisionFeatures = [...context.decisionFeatures];
+  return sample;
+}
+
+/**
+ * Scores every legal move using the separately trained annotation-quality
+ * classifier. It does not blend these scores into policy probabilities.
+ * The returned probabilities estimate how PGN annotators judged similar moves,
+ * not objective chess strength or a guaranteed outcome.
+ */
+export function rankLegalMovesByDecisionQuality(
+  model: tf.LayersModel,
+  context: LegalMoveQualityContext,
+  archetypeModel?: ArchetypeEncoderModel,
+): LegalMoveQualityScore[] {
+  const chess = new Chess(context.fen);
+  const legalMoves = chess.moves({ verbose: true });
+  if (legalMoves.length === 0) return [];
+
+  const samples = legalMoves.map((move) => buildCandidateSample(context, move));
+  const inputs = tf.tensor2d(
+    samples.map((sample) => Array.from(encodeDecisionQualitySample(sample, archetypeModel))),
+    [samples.length, DECISION_QUALITY_INPUT_FEATURES],
+  );
+
+  let output: tf.Tensor | undefined;
+  try {
+    const prediction = model.predict(inputs);
+    if (Array.isArray(prediction)) {
+      prediction.forEach((tensor) => tensor.dispose());
+      throw new Error("Decision-quality model must have exactly one output tensor.");
+    }
+    output = prediction;
+    const values = output.dataSync();
+    const expectedValues = samples.length * DECISION_QUALITY_LABELS.length;
+    if (values.length !== expectedValues) {
+      throw new Error(
+        "Decision-quality model returned " + values.length + " values; expected " + expectedValues + ".",
+      );
+    }
+
+    const scores = samples.map((sample, row): LegalMoveQualityScore => {
+      const probabilities = DECISION_QUALITY_LABELS.map((label, column) => ({
+        label,
+        probability: values[row * DECISION_QUALITY_LABELS.length + column] ?? 0,
+      }));
+      const total = probabilities.reduce((sum, item) => sum + item.probability, 0);
+      if (!Number.isFinite(total) || total <= 0
+        || probabilities.some((item) => !Number.isFinite(item.probability) || item.probability < 0)) {
+        throw new Error("Decision-quality model returned invalid class probabilities.");
+      }
+
+      const normalized = probabilities.map((item) => ({
+        label: item.label,
+        probability: item.probability / total,
+      }));
+      const predicted = normalized.reduce((best, item) =>
+        item.probability > best.probability ? item : best,
+      normalized[0]!);
+      const positiveAnnotationProbability = normalized
+        .filter((item) => POSITIVE_LABELS.has(item.label))
+        .reduce((sum, item) => sum + item.probability, 0);
+      const criticalAnnotationProbability = normalized
+        .filter((item) => CRITICAL_LABELS.has(item.label))
+        .reduce((sum, item) => sum + item.probability, 0);
+      const interestingAnnotationProbability =
+        normalized.find((item) => item.label === "interesting")?.probability ?? 0;
+
+      return {
+        move: sample.moveUci,
+        predictedLabel: predicted.label,
+        confidence: predicted.probability,
+        positiveAnnotationProbability,
+        interestingAnnotationProbability,
+        criticalAnnotationProbability,
+        probabilities: normalized,
+      };
+    });
+
+    return scores.sort((a, b) =>
+      b.positiveAnnotationProbability - a.positiveAnnotationProbability
+      || a.criticalAnnotationProbability - b.criticalAnnotationProbability
+      || a.move.localeCompare(b.move),
+    );
+  } finally {
+    inputs.dispose();
+    output?.dispose();
+  }
 }
 
 export function createDecisionQualityModel(): tf.Sequential {

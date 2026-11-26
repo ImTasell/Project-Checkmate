@@ -10,6 +10,7 @@ A TypeScript chess project focused on learning move preferences from real human 
 - A separate decision-quality classifier that learns from explicitly annotated human moves.
 - Unannotated moves are excluded from decision-quality training rather than being treated as good decisions.
 - Decision-quality inference evaluates a position plus the move actually played and returns probabilities for seven annotation categories.
+- Legal-move analysis scores every candidate with that separate classifier and exposes positive, interesting, and critical annotation probabilities as advisory signals.
 - Model training, player-disjoint evaluation, compact JSONL datasets, and portable TensorFlow.js artifacts.
 
 ## Setup
@@ -64,6 +65,22 @@ npm run train:quality -- ./data/processed/human-moves.jsonl ./models/decision-qu
 This trains a separate model using only explicitly annotated moves. Its inputs contain the board position, the move actually played (from/to and promotion encodings), player skill/style/archetype, pre-move decision context, and 29 move-specific tactical descriptors. Those descriptors cover captures, en passant, castling, promotions, checks, mate/stalemate, piece identities, attacked/defended destination geometry, and immediate legal capture replies. They are reconstructed from the sample FEN and UCI move, so existing JSONL datasets do not need extra stored feature fields. The annotation on the target move is used only as the training label. Supported labels are good, brilliant, interesting, mistake, dubious, blunder, and worst; generic NAGs without a quality meaning are excluded.
 
 The model predicts how an annotated move was judged by a human/editor. This is weak supervision, not an objective engine evaluation or proof that a move is objectively bad. Attack-map counts are geometric signals and may include pinned pieces; only the immediate-capture-reply features use the opponent's legal move list. None of these descriptors is an exchange evaluation or substitute for search.
+
+## Analyze every legal move
+
+After training the decision-quality model, analyze a FEN:
+
+```sh
+npm run analyze:quality -- "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+```
+
+Optional arguments are the model directory and current player's Elo:
+
+```sh
+npm run analyze:quality -- "<FEN>" ./models/decision-quality 1600
+```
+
+The analyzer scores every legal candidate and reports the probability of a positive annotation (good/brilliant), an interesting annotation, and a critical annotation (mistake/dubious/blunder/worst). It does not combine those probabilities with policy scores or change move selection. Treat the output as advisory human-annotation likelihood, not objective chess strength.
 
 ## Evaluate decision-quality generalization
 

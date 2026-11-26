@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "description": "A chess bot that learns move preferences from human games.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
@@ -14,7 +16,8 @@
     "players:evaluate-archetypes": "tsx src/cli/evaluate-archetypes.ts",
     "train": "tsx src/cli/train.ts",
     "train:quality": "tsx src/cli/train-quality.ts",
-    "evaluate:quality": "tsx src/cli/evaluate-quality.ts"
+    "evaluate:quality": "tsx src/cli/evaluate-quality.ts",
+    "analyze:quality": "tsx src/cli/analyze-quality.ts"
   },
   "dependencies": {
     "@tensorflow/tfjs": "4.22.0",
