@@ -1,4 +1,3 @@
-import { loadArchetypeEncoder } from "../data/archetypes.js";
 import { loadDecisionQualityModel } from "../model/decision-quality-storage.js";
 import { loadPolicyModel } from "../model/storage.js";
 import { chooseHumanLikeMove } from "../model/selection.js";
@@ -75,10 +74,10 @@ try {
       ...(playerElo !== undefined ? { playerElo } : {}),
     },
     {
-      policyArchetypeModel: policy.archetypeModel,
+      ...(policy.archetypeModel ? { policyArchetypeModel: policy.archetypeModel } : {}),
       ...(quality ? {
         qualityModel: quality.model,
-        qualityArchetypeModel: quality.archetypeModel,
+        ...(quality.archetypeModel ? { qualityArchetypeModel: quality.archetypeModel } : {}),
       } : {}),
       temperature,
       qualityWeight,
