@@ -81,7 +81,7 @@ export class MoveDecisionContext {
   private moves: number;
   private annotatedMoves: number;
   private negativeAnnotations: number;
-  private lastClockRemainingSeconds?: number;
+  private lastClockRemainingSeconds: number | undefined;
 
   constructor(
     private readonly baseTimeSeconds?: number,
