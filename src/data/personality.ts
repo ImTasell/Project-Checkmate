@@ -29,7 +29,6 @@ export interface PlayerPersonalityProfile {
     pawnExpansionFrequency: PlayerTendency;
     centralization: PlayerTendency;
     pieceActivity: PlayerTendency;
-    earlyQueenActivity: PlayerTendency;
     kingMoveFrequency: PlayerTendency;
     unansweredExposureFrequency: PlayerTendency;
     acceptedExposureFrequency: PlayerTendency;
@@ -97,8 +96,6 @@ export function buildPlayerPersonality(
         "Average geometric centrality of non-pawn, non-king piece destinations."),
       pieceActivity: rate(state.activePieceMoves, moves, moves, minimumMoves,
         "Share of moves made by knights, bishops, rooks, or queens."),
-      earlyQueenActivity: rate(state.earlyQueenMoves, moves, moves, minimumMoves,
-        "Share of moves spent moving the queen during the player's first ten moves."),
       kingMoveFrequency: rate(state.kingMoves, moves, moves, minimumMoves,
         "Share of moves made by the king, excluding castling."),
       unansweredExposureFrequency: rate(

@@ -50,7 +50,7 @@ After importing PGNs, generate descriptive profiles from accumulated move histor
 npm run players:profiles
 ```
 
-The report includes capture/check/forcing-move frequencies, quiet-move frequency, pawn expansion, centralization, piece activity, early queen activity, king movement, castling history, and one-ply unanswered material exposure. Values include evidence counts and use a 24-move default minimum. Quiet-move and exposure counters are populated only for games imported after this feature; older profile files remain readable, but these newer measurements remain unknown until fresh games are imported. An unanswered exposure is not proof of an intentional sacrifice or a measure of objective move quality.
+The report includes capture/check/forcing-move frequencies, quiet-move frequency, pawn expansion, centralization, piece activity, king movement, castling history, and one-ply unanswered material exposure. Values include evidence counts and use a 24-move default minimum. Quiet-move and exposure counters are populated only for games imported after this feature; older profile files remain readable, but these newer measurements remain unknown until fresh games are imported. To backfill an existing corpus without duplicating the training JSONL, re-import the PGN into a scratch JSONL and a new profile path, for example: `npm run pgn:dataset -- ./data/raw/human-games.pgn ./tmp/rebuilt-moves.jsonl ./data/processed/player-profiles-v2.json`. An unanswered exposure is not proof of an intentional sacrifice or a measure of objective move quality.
 
 These profiles are observational summaries, not psychological diagnoses or skill ratings. They do not affect policy conditioning or move selection yet.
 
