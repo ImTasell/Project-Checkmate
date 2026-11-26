@@ -50,7 +50,6 @@ function isSample(value: unknown): value is HumanMoveSample {
   return typeof sample.fen === "string"
     && typeof sample.moveUci === "string"
     && Number.isInteger(sample.moveIndex)
-    && Array.isArray(sample.features)
-    && sample.features.length === 773
-    && sample.features.every((feature) => typeof feature === "number" && Number.isFinite(feature));
+    && typeof sample.result === "string"
+    && Number.isInteger(sample.ply);
 }
