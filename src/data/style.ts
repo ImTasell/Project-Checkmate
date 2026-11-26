@@ -24,6 +24,8 @@ export interface StyleObservation {
   to: string;
   flags: string;
   san: string;
+  /** An opponent has a legal capture on this destination with no immediate legal recapture. */
+  offersUnansweredExposure?: boolean;
 }
 
 /** Raw counters, rather than averages, preserve exact weighting across games. */
@@ -38,6 +40,11 @@ export interface PlayerStyleState {
   castled: boolean;
   kingMoves: number;
   activePieceMoves: number;
+  /** Moves observed after unanswered-exposure tracking was introduced. */
+  contextObservedMoves: number;
+  quietMoves: number;
+  unansweredExposureOpportunities: number;
+  acceptedExposureOpportunities: number;
 }
 
 function safeCount(value: number | undefined): number {
@@ -76,6 +83,10 @@ export class PlayerStyleAccumulator {
   private castled: boolean;
   private kingMoves: number;
   private activePieceMoves: number;
+  private contextObservedMoves: number;
+  private quietMoves: number;
+  private unansweredExposureOpportunities: number;
+  private acceptedExposureOpportunities: number;
 
   constructor(state?: Partial<PlayerStyleState>) {
     this.moves = safeCount(state?.moves);
@@ -88,6 +99,11 @@ export class PlayerStyleAccumulator {
     this.castled = state?.castled === true;
     this.kingMoves = safeCount(state?.kingMoves);
     this.activePieceMoves = safeCount(state?.activePieceMoves);
+    // Older version-1 profile files remain readable; new-only metrics start unknown.
+    this.contextObservedMoves = safeCount(state?.contextObservedMoves);
+    this.quietMoves = safeCount(state?.quietMoves);
+    this.unansweredExposureOpportunities = safeCount(state?.unansweredExposureOpportunities);
+    this.acceptedExposureOpportunities = safeCount(state?.acceptedExposureOpportunities);
   }
 
   snapshot(): number[] {
@@ -117,19 +133,30 @@ export class PlayerStyleAccumulator {
       castled: this.castled,
       kingMoves: this.kingMoves,
       activePieceMoves: this.activePieceMoves,
+      contextObservedMoves: this.contextObservedMoves,
+      quietMoves: this.quietMoves,
+      unansweredExposureOpportunities: this.unansweredExposureOpportunities,
+      acceptedExposureOpportunities: this.acceptedExposureOpportunities,
     };
+  }
+
+  /** Records that the opponent actually accepted a previously offered exposure on its next move. */
+  observeAcceptedExposure(): void {
+    this.acceptedExposureOpportunities += 1;
   }
 
   observe(observation: StyleObservation, color: "w" | "b"): void {
     const ownMoveNumber = this.moves + 1;
     this.moves += 1;
+    this.contextObservedMoves += 1;
 
-    if (observation.flags.includes("c") || observation.flags.includes("e")) {
-      this.captures += 1;
-    }
-    if (observation.san.includes("+") || observation.san.includes("#")) {
-      this.checks += 1;
-    }
+    const isCapture = observation.flags.includes("c") || observation.flags.includes("e");
+    const givesCheck = observation.san.includes("+") || observation.san.includes("#");
+    if (isCapture) this.captures += 1;
+    if (givesCheck) this.checks += 1;
+    if (!isCapture && !givesCheck) this.quietMoves += 1;
+    if (observation.offersUnansweredExposure) this.unansweredExposureOpportunities += 1;
+
     if (observation.piece === "p" && isForwardPawnMove(observation, color)) {
       this.pawnAdvances += 1;
     }
