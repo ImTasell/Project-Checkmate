@@ -8,6 +8,10 @@ export interface HumanMoveSample {
   result: "1-0" | "0-1" | "1/2-1/2" | "*";
   whiteElo?: number;
   blackElo?: number;
+  /** Elo of the player who made this specific move. */
+  playerElo?: number;
+  /** Elo of the opponent faced by the player who made this move. */
+  opponentElo?: number;
   ply: number;
 }
 
@@ -57,8 +61,12 @@ export function importPgn(pgn: string): { samples: HumanMoveSample[]; stats: Pgn
           result: normalizedResult,
           ply: ply + 1,
         };
+        const playerElo = move.color === "w" ? whiteElo : blackElo;
+        const opponentElo = move.color === "w" ? blackElo : whiteElo;
         if (whiteElo !== undefined) sample.whiteElo = whiteElo;
         if (blackElo !== undefined) sample.blackElo = blackElo;
+        if (playerElo !== undefined) sample.playerElo = playerElo;
+        if (opponentElo !== undefined) sample.opponentElo = opponentElo;
         samples.push(sample);
         stats.positions += 1;
       }
